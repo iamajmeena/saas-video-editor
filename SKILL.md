@@ -15,7 +15,7 @@ curated list of rules that came from real corrections. Then `TECHNIQUES.md`, `GO
   `applyTilt`, `glass`, `formBox`, `chip`, `words`, `wordList`, `rollTo`, `frameIndex`, `motionBudget`.
 - `scripts/` — onetake's `render.py` (frame-by-frame + shutter blur), `stills.py`, `probe.py`, `verify_promo.py`, `analyze_ref.py`,
   `look.py`, `sfx_palette.py`, `vo_tools.py`; ours: `vstills.py` (vertical contact sheet; stills.py is 16:9 only).
-- `templates/comp.html` — starting composition. `references/*.md` — onetake's docs (composition, motion-library, rhythm, sound, product-demo, reference-deconstruction).
+- `templates/reel9x16/comp.html` — vertical starter built on lib/glyph.js (test render passed); `templates/comp.html` — onetake landscape DOM example. `references/*.md` — onetake's docs (composition, motion-library, rhythm, sound, product-demo, reference-deconstruction).
 - `examples/` — real builds (code only, no media): `juno/` (patching a ChatGPT film to v2 with camera+glass+words),
   `ddr/` (series ident with real-3D icons + reel comp), `screenlark/` (shared kit sl.js, 3 concepts, morph-chain ad B2, UI-rebuild Q1).
 
@@ -33,6 +33,11 @@ curated list of rules that came from real corrections. Then `TECHNIQUES.md`, `GO
 - Glass boxes form first, items appear one by one, text is written on the spoken word.
 - Hook = most advanced part. Variety of layouts. Gradient-only moving background (no particles). Nothing on the face.
 - Safe zone x 40-940, y 255-1295. Original UIs only. Do not touch the audio; no SFX unless asked.
+
+## New video? (install -> edit)
+`INSTALL.md` installs this skill; `WORKFLOW.md` is the step-by-step. One-liners: `scripts/new_reel.py <Name> <source>` (frames + audio + transcript),
+`scripts/transcribe.py` (no-VAD, auto re-chunks stretched words/gaps into flags.txt), `scripts/make_preview.py` (preview / GIF), `scripts/vstills.py` (vertical contact sheet).
+Landscape/YouTube: same loop at 1920x1080 (see WORKFLOW.md); the first long-form video will refine it.
 
 ## Minimal use of lib/glyph.js
 ```js

@@ -1,11 +1,27 @@
 # SaaS Video Editor (glyph-motions) — living knowledge base & Claude skill
 
-## Preview
-Built with this skill (silent GIFs, real renders live in the source projects):
+## Preview — one skill, many kinds of videos
+Silent GIF cuts (3-4 s each) from real builds. Same engine, very different looks.
 
+**Talking-head reels with built graphics** (face fullscreen / circle / split, real UIs, glass cards)
+| Muse explainer — toggle build | Muse — glass credit card | 3 GitHub skills — repo page | 3 skills — terminal progress |
+|---|---|---|---|
+| ![](media/explainer-muse-vpn.gif) | ![](media/explainer-muse-card.gif) | ![](media/skills-github-page.gif) | ![](media/skills-terminal.gif) |
+
+**Tutorial / series (DaVinci Resolve)**
+| DaVinci MCP — Claude drives Resolve | DDR series — Day 1 reel | DDR — Day 2 | DDR — Day 4 |
+|---|---|---|---|
+| ![](media/davinci-mcp-claude.gif) | ![](media/ddr-reel1.gif) | ![](media/ddr-day2.gif) | ![](media/ddr-day4.gif) |
+
+**SaaS product walkthroughs** (UI built from an empty shell, camera travels to every click)
+| Juno — search beat | Juno — 30-day calendar | Screenlark — editor builds | Screenlark — competitors |
+|---|---|---|---|
+| ![](media/juno-search.gif) | ![](media/juno-calendar.gif) | ![](media/screenlark-ui-build.gif) | ![](media/screenlark-competitors.gif) |
+
+**Idents, ads & hooks**
 | Series ident (real 3D icons) | Product ad (morph chain) | Reel hook (dense, face + real UI) |
 |---|---|---|
-| ![ident](media/ddr-ident.gif) | ![ad](media/screenlark-ad.gif) | ![hook](media/reel-hook.gif) |
+| ![](media/ddr-ident.gif) | ![](media/screenlark-ad.gif) | ![](media/reel-hook.gif) |
 
 Goal: grow this folder, reel by reel, until it can be packaged as our own Claude skill
 (final name: **glyph-motions**) — a derivative of the
@@ -35,7 +51,12 @@ While doing so, every new learning is written HERE immediately (not just in `../
 4. Test on a fresh reel; the user approves; only then publish/install to `~/.claude/skills/`.
 
 ## Credit
-Derivative workflow of the `onetake` skill by Patrick (github.com/feitangyuan/onetake), PolyForm Noncommercial 1.0.0. This repo holds only notes/rules, not onetake code.
+Derivative workflow of the `onetake` skill by Patrick (github.com/feitangyuan/onetake), PolyForm Noncommercial 1.0.0. onetake's own files (lib/motion.js, ui_kit.js, scripts, templates, references) are included unchanged with its LICENSE; everything else is ours (see NOTICE).
+
+## Use it for your next video
+`sh install.sh` (or `.\install.ps1`), then tell Claude Code: "edit this video with saas-video-editor: <file>". See `INSTALL.md` and `WORKFLOW.md`.
+Tools: `scripts/new_reel.py` (project + face frames + transcript), `scripts/transcribe.py` (Hinglish-safe), `scripts/render.py` (shutter-blur render),
+`scripts/make_preview.py` (playable copy / GIF), `templates/reel9x16/comp.html` (vertical starter, test render passed: 270 frames, no page errors).
 
 ## Contents now
 `SKILL.md` (entry) · `lib/` (onetake motion.js + ui_kit.js + our glyph.js) · `scripts/` (render, stills, vstills, probe, analyze_ref, ...) ·

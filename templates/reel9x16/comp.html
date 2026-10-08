@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>reel 9:16 starter</title>
+<!-- glyph-motions starter: 1080x1920 canvas, glass boxes that FORM, text written on spoken words, camera to the click,
+     per-beat 3D tilt, moving gradient-only background, Instagram safe zone. Pure function of time.
+     Copy this folder into your project, keep lib/ next to it (new_reel.py does this), then edit CONFIG + the beats. -->
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#07090d}
+canvas{display:block;width:1080px;height:1920px}
+</style></head><body><canvas id="film" width="1080" height="1920"></canvas>
+<script src="lib/motion.js"></script><script src="lib/glyph.js"></script>
+<script>
+// ───────────────────────────────────────────── CONFIG (edit) ─────────────────────────────────────────────
+const W=1080,H=1920,FPS=30,DUR=9;
+const FACE={dir:null,count:0,fps:30};          // set dir:'face/' (f0001.jpg...) after prepare; null = no face in the starter
+const C={bg:'#07090d',ink:'#f4f6fa',mute:'#8d97a6',acc:'#8b5cf6',acc2:'#22d3ee'};
+// spoken words -> [word, start seconds]: paste from transcript_words.json via GM.wordList(...)
+const HEAD=[['Build','0.40'],['it','0.80'],['like','1.05'],['this.','1.35']].map(([w,t])=>[w,+t]);
+const CHIPS=[['camera',2.6],['3D tilt',2.85],['glass',3.1],['words',3.35]];
+const CLICKS=[{at:5.2,x:830,y:560}];             // world px; camera travels to each
+const SAFE={x0:40,x1:940,y0:255,y1:1295};        // Instagram safe zone: keep text/cards inside
+// ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+const {U,L,soft}=GM,E=OM.ease,canvas=document.getElementById('film'),g=canvas.getContext('2d');
+const {keys,moves}=GM.cameraToClicks(CLICKS,{W,H});
+const BEATS=[0,2.2,4.6,7.0];                      // beat starts (tilt changes per beat)
+const beatAt=t=>{let i=0;while(i+1<BEATS.length&&t>=BEATS[i+1])i++;return i;};
+const face=[];                                    // preloaded per-seek via cache
+
+// background: ONLY the gradient moves (drifting glows). No particles.
+function ground(t,cam){
+  g.setTransform(1,0,0,1,0,0);g.fillStyle=C.bg;g.fillRect(0,0,W,H);
+  const blobs=[[.2,.25,C.acc,.34,0.13],[.85,.7,C.acc2,.22,0.1],[.5,.95,C.acc,.2,0.08]];
+  blobs.forEach(([x,y,col,a,sp],i)=>{const cx=W*(x+.08*Math.sin(t*sp*6+i*2)),cy=H*(y+.06*Math.cos(t*sp*5+i)),r=W*1.05;
+    const gr=g.createRadialGradient(cx,cy,0,cx,cy,r);gr.addColorStop(0,hexA(col,a));gr.addColorStop(1,hexA(col,0));g.fillStyle=gr;g.fillRect(0,0,W,H);});
+}
+function hexA(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;}
+function text(s,x,y,size,weight,col,align='left'){g.font=`${weight} ${size}px Inter, system-ui, sans-serif`;g.textAlign=align;g.textBaseline='alphabetic';g.fillStyle=col;g.fillText(s,x,y);}
+
+function render(t){
+  const cam=OM.camera(t,keys,{W,H}),bi=beatAt(t),k=bi?U(t,BEATS[bi],BEATS[bi]+.65,E.quintInOut):1;
+  GM.applyTilt(canvas,cam,bi,k,{W,H});
+  ground(t,cam);
+  const M=OM.view(cam,{W,H});g.setTransform(M[0],M[1],M[2],M[3],M[4],M[5]);
+  // headline written word by word on the spoken word
+  GM.words(g,t,HEAD.map(([w,s])=>[w,s]),SAFE.x0+20,SAFE.y0+120,96,700,C.ink);
+  // glass box FORMS from a pill, then chips waterfall in
+  const box=GM.formBox(g,t,1.9,2.6,{x:455,y:520,w:170,h:70,r:35},{x:SAFE.x0+20,y:430,w:860,h:360,r:36});
+  CHIPS.forEach(([s,at],i)=>GM.chip(g,t,s,SAFE.x0+60+(i%2)*400,490+Math.floor(i/2)*84,at,{color:C.acc2}));
+  // a button the camera travels to; click lands AFTER the spoken word
+  const c=CLICKS[0],p=OM.press?OM.press(t,c.at,{depth:.1}):{s:1,active:false};
+  GM.glass(g,c.x-110,c.y-34,220,68,34,{o:U(t,4.4,4.9),fill:p.active?'rgba(139,92,246,.8)':'rgba(255,255,255,.12)'});
+  g.save();g.globalAlpha=U(t,4.4,4.9);text('Render',c.x,c.y+9,28,650,C.ink,'center');g.restore();
+  // counter rolls on its word
+  g.save();g.globalAlpha=U(t,6.6,7.0);text(String(GM.rollTo(t,6.8,300,.6)),SAFE.x0+20,1040,170,800,C.ink);g.restore();
+  g.save();g.globalAlpha=U(t,7.3,7.8);text('frames. one take.',SAFE.x0+20,1110,40,500,C.mute);g.restore();
+  return true;
+}
+window.__meta={dur:DUR,fps:FPS,width:W,height:H,cuts:[],inFrame:{}};
+window.__motion=GM.motionBudget([...moves,[1.9,2.6,500],[4.4,4.9,200],[6.6,7.4,300]]);
+window.__seek=async t=>{t=Math.max(0,Math.min(DUR,t));return render(t);};
+window.__ready=document.fonts.ready.then(()=>window.__seek(0));
+const q=new URLSearchParams(location.search);
+if(q.has('t'))window.__ready.then(()=>window.__seek(+q.get('t')));
+if(q.has('play'))window.__ready.then(()=>{const t0=performance.now();(function loop(){render(((performance.now()-t0)/1000)%DUR);requestAnimationFrame(loop);})();});
+</script></body></html>
