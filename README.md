@@ -1,5 +1,12 @@
 # SaaS Video Editor (glyph-motions) — living knowledge base & Claude skill
 
+## Preview
+Built with this skill (silent GIFs, real renders live in the source projects):
+
+| Series ident (real 3D icons) | Product ad (morph chain) | Reel hook (dense, face + real UI) |
+|---|---|---|
+| ![ident](media/ddr-ident.gif) | ![ad](media/screenlark-ad.gif) | ![hook](media/reel-hook.gif) |
+
 Goal: grow this folder, reel by reel, until it can be packaged as our own Claude skill
 (final name: **glyph-motions**) — a derivative of the
 `onetake` skill (`~/.claude/skills/onetake`) with the user's rules, taste and corrections baked in.
