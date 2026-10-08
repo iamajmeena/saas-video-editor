@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Screenlark ad - B morph chain</title>
+<style>
+@font-face{font-family:'Outfit';src:url(assets/Outfit.ttf);font-weight:100 900}
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#06050d}
+body{font-family:'Outfit',system-ui,sans-serif;color:#fff}
+#stage{position:absolute;inset:0;overflow:hidden}
+#scene{position:absolute;inset:0;perspective:1400px;perspective-origin:540px 860px}
+#rig{position:absolute;inset:0;transform-style:preserve-3d}
+.lay{position:absolute;inset:0;opacity:0;will-change:opacity}
+.lab{position:absolute;left:0;width:1080px;text-align:center;font-weight:800;font-size:84px;letter-spacing:.02em;white-space:nowrap;text-shadow:0 0 44px rgba(139,92,246,.95)}
+.lab span{display:inline-block;will-change:transform,opacity}
+.chip{position:absolute;left:-55px;top:-55px;width:110px;height:110px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.08));border:1.6px solid rgba(255,255,255,.55);box-shadow:0 0 50px rgba(139,92,246,.8),inset 0 1px 0 rgba(255,255,255,.6);will-change:transform,opacity}
+.chip svg{width:54px;height:54px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+</style></head><body>
+<div id="stage"><div id="scene"><div id="rig"></div></div></div>
+<script src="motion.js"></script><script src="sl.js"></script>
+<script>
+const { OM, SL } = window; const { clamp, lerp, seg, sstep } = OM, E = OM.ease;
+let G, Lamp, Beam, rig, C, L = {}, labs = [], chips = [], words = [], rings = [], wm, dot, X = {};
+const FEAT = [   // start, end, label, rect {cx,cy,w,h}, layer
+  [3.0, 4.2, 'AUTO ZOOM', { cx: 540, cy: 830, w: 960, h: 330 }, 'tl'],
+  [4.2, 5.4, 'KEY CAPS', { cx: 540, cy: 880, w: 960, h: 560 }, 'keys'],
+  [5.4, 6.6, 'CAPTIONS', { cx: 540, cy: 830, w: 960, h: 420 }, 'caps'],
+  [6.6, 7.8, 'SILENCE REMOVE', { cx: 540, cy: 880, w: 960, h: 560 }, 'sil'],
+  [7.8, 9.0, 'MIC RECORD', { cx: 540, cy: 810, w: 960, h: 330 }, 'mic'],
+];
+const FIN = { cx: 540, cy: 930, w: 800, h: 170 };
+const ICON = ['<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M11 8v6M8 11h6"/>', '<path d="M8 4a4 4 0 100 8h8a4 4 0 100-8 4 4 0 00-4 4v8a4 4 0 104 4 4 4 0 00-4-4H8a4 4 0 100 8 4 4 0 004-4V8a4 4 0 00-4-4z" transform="scale(.9) translate(1,0)"/>', '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M9 10.5a2 2 0 100 3M16 10.5a2 2 0 100 3"/>', '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/>', '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v4"/>'];
+
+function build() {
+  const st = document.getElementById('stage'); rig = document.getElementById('rig');
+  G = SL.ground(); st.insertBefore(G.el, st.firstChild);
+  // morphing container C (the carry)
+  C = SL.mk('div', '', rig, 'position:absolute;left:0;top:0;border-radius:40px;overflow:hidden;background:linear-gradient(160deg,rgba(26,20,52,.96),rgba(9,8,20,.98));will-change:transform,width,height;' +
+    'box-shadow:0 0 0 2px rgba(221,214,254,.75),0 30px 90px rgba(0,0,0,.65),0 0 70px rgba(139,92,246,.55),inset 0 1px 0 rgba(255,255,255,.4)');
+  const lay = n => { L[n] = SL.mk('div', 'lay', C); return L[n]; };
+  // tl : zoomed left half of the zoom timeline
+  let l = lay('tl'); X.tlimg = SL.mk('img', '', l, 'position:absolute;left:0;top:0;height:100%;width:auto'); X.tlimg.src = 'assets/tl_zoom.jpg';
+  X.ret = SL.mk('div', '', l, 'position:absolute;width:150px;height:150px;border-radius:50%;border:4px solid #22d3ee;box-shadow:0 0 40px #22d3ee,inset 0 0 30px rgba(34,211,238,.5)');
+  X.badge = SL.glassPill(l, '<span style="color:#22d3ee;margin-right:12px">&#9906;</span>1.80&times;', 'left:700px;top:18px;width:230px;height:64px;font-size:34px');
+  // keys: keycaps + real panel
+  l = lay('keys'); X.kp = SL.mk('img', '', l, 'position:absolute;right:20px;top:16px;height:528px;border-radius:20px;box-shadow:0 0 0 1.5px rgba(196,181,253,.6)'); X.kp.src = 'assets/panel_keys.jpg';
+  X.alt = SL.keycap(l, 'Alt', 200); X.s = SL.keycap(l, 'S', 150); X.plus = SL.mk('div', '', l, 'position:absolute;left:0;top:0;width:60px;font-size:80px;font-weight:700;color:#c4b5fd;text-align:center', '+');
+  X.name = SL.glassPill(l, 'Add Serial Node', 'left:70px;top:420px;width:420px;height:76px;font-size:36px;background:linear-gradient(180deg,#8b5cf6,#6d28d9)');
+  // caps
+  l = lay('caps'); X.ci = SL.mk('img', '', l, 'position:absolute;left:0;top:0;height:300px;width:auto'); X.ci.src = 'assets/tl_caps.jpg';
+  X.ct = SL.glassPill(l, '<span id="ctxt"></span>', 'left:40px;top:312px;width:880px;height:84px;font-size:34px;font-weight:500;justify-content:flex-start;padding-left:30px;box-sizing:border-box;background:linear-gradient(180deg,rgba(250,204,21,.9),rgba(234,179,8,.9));color:#1a1530');
+  // silence
+  l = lay('sil'); X.sp = SL.mk('img', '', l, 'position:absolute;right:20px;top:16px;height:528px;border-radius:20px;box-shadow:0 0 0 1.5px rgba(196,181,253,.6)'); X.sp.src = 'assets/panel_silence.jpg';
+  X.bars = []; const rr = OM.rng(9);
+  for (let i = 0; i < 24; i++) { const b = SL.mk('div', '', l, 'position:absolute;width:12px;border-radius:6px;background:linear-gradient(#e9d5ff,#8b5cf6)'); b._h = 40 + rr() * 150; b._i = i; X.bars.push(b); }
+  X.cut = SL.mk('div', '', l, 'position:absolute;top:226px;height:56px;padding:0 20px;border-radius:28px;background:#22d3ee;color:#06050d;font-weight:800;font-size:32px;line-height:56px;text-align:center');
+  X.cut.textContent = '-2.2s';
+  // mic
+  l = lay('mic'); X.hud = SL.mk('img', '', l, 'position:absolute;left:30px;top:24px;width:900px;border-radius:30px'); X.hud.src = 'assets/hud_full.jpg';
+  X.mbars = []; for (let i = 0; i < 40; i++) X.mbars.push(SL.mk('div', '', l, 'position:absolute;width:10px;border-radius:5px;background:linear-gradient(#a5f3fc,#8b5cf6);bottom:44px;left:' + (48 + i * 22) + 'px'));
+  // finale
+  l = lay('fin'); X.fin = SL.mk('div', '', l, 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:56px;font-weight:700;background:linear-gradient(180deg,#8b5cf6,#6d28d9)', 'FREE &nbsp;&middot;&nbsp; Mac + Windows');
+  // words (setup)
+  const mkw = (txt, y, sz) => SL.mk('div', '', rig, `position:absolute;left:0;width:1080px;top:${y}px;text-align:center;font-size:${sz}px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;text-shadow:0 0 60px rgba(139,92,246,.8);will-change:transform,opacity,filter`, txt);
+  words = [mkw('We made', 700, 170), mkw('the <span style="color:#c4b5fd">solution</span>', 880, 150)];
+  dot = SL.mk('div', '', rig, 'position:absolute;left:-30px;top:-30px;width:60px;height:60px;border-radius:50%;background:#ef4444;box-shadow:0 0 60px #ef4444,0 0 0 8px rgba(239,68,68,.3);will-change:transform');
+  Beam = SL.beam(st); Lamp = SL.lamp(st);
+  for (let i = 0; i < 3; i++) rings.push(SL.mk('div', '', st, 'position:absolute;border-radius:50%;border:3px solid rgba(221,214,254,.9);box-shadow:0 0 30px rgba(167,139,250,.9);left:0;top:0;width:100px;height:100px;margin:-50px 0 0 -50px'));
+  wm = SL.mk('img', '', st, 'position:absolute;left:190px;top:1090px;width:700px;will-change:transform,opacity'); wm.src = 'assets/word.png';
+  FEAT.forEach(f => { const d = SL.mk('div', 'lab', st); d.innerHTML = [...f[2]].map(c => `<span>${c === ' ' ? '&nbsp;' : c}</span>`).join(''); labs.push(d); });
+  ICON.forEach(ic => { const c = SL.mk('div', 'chip', st, ''); c.innerHTML = `<svg viewBox="0 0 24 24">${ic}</svg>`; chips.push(c); });
+}
+
+function rectAt(t) {   // container rect over time: morph chain from lamp -> F1 -> ... -> FIN
+  const lamp = { x: 540 - 84, y: 330 - 84, w: 168, h: 168, r: 44 };
+  const conv = f => ({ x: f.cx - f.w / 2, y: f.cy - f.h / 2, w: f.w, h: f.h, r: 40 });
+  const seq = [[2.75, lamp]].concat(FEAT.map(f => [f[0], conv(f[3])])).concat([[9.1, conv(FIN)]]);
+  let cur = seq[0][1];
+  for (let i = 0; i < seq.length - 1; i++) {
+    if (t >= seq[i][0]) { cur = OM.morphRect(t, seq[i][0] + (i === 0 ? 0.05 : 0), seq[i][0] + (i === 0 ? 0.85 : 0.75), i === 0 ? lamp : seq[i][1], seq[i + 1][1], { spring: { zeta: 0.78, omega: 12 } }); cur = { ...cur }; }
+  }
+  // morphRect(t,t0,t1,A,B): between seq[i] and seq[i+1] we need the segment i that STARTS at seq[i+1][0]
+  let a = seq[0][1], tb = seq[1][0];
+  for (let i = 1; i < seq.length; i++) {
+    const A = seq[i - 1][1], B = seq[i][1], t0 = seq[i][0] - 0.0;
+    if (t >= t0 - 0.0) { a = OM.morphRect(t, t0, t0 + 0.8, A, B, { spring: { zeta: 0.74, omega: 13 } }); } else if (i === 1) { a = A; }
+  }
+  return a;
+}
+
+function seek(t) {
+  G.at(t, sstep(9.2, 10, t));
+  // camera swings: scene tilts differently per feature
+  const ry = SL.K(t, [[0, 0], [2.8, 0], [3.4, -9, E.expoInOut], [4.6, 10, E.expoInOut], [5.7, -8, E.expoInOut], [6.9, 9, E.expoInOut], [8.1, -6, E.expoInOut], [9.2, 0, E.expoInOut]]);
+  const rx = SL.K(t, [[0, 0], [2.8, 0], [3.4, 6, E.expoInOut], [5.0, -4, E.sineInOut], [6.6, 5, E.sineInOut], [8.1, -3, E.sineInOut], [9.2, 0, E.expoInOut]]);
+  const zz = SL.K(t, [[0, -160], [1.2, 0, E.expoOut], [2.8, 0], [3.4, 20, E.expoInOut], [4.6, -10, E.sineInOut], [6.6, 30, E.sineInOut], [8.1, 0, E.sineInOut], [9.2, -40, E.expoInOut]]);
+  rig.style.transform = `translate3d(0,0,${zz.toFixed(2)}px) rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg)`;
+
+  // setup words -> dot
+  words.forEach((w, i) => { const r = OM.wordRise(t, 0.05 + i * 0.5, { dist: 60 }); const g = sstep(0.9, 1.1, t); SL.tf(w, { y: r.y + g * (i ? -90 : 90), s: r.s * (1 - g * 0.9), op: r.op * (1 - sstep(1.0, 1.15, t)), blur: g * 14 }); });
+  // dot: pops at 1.0, becomes the lamp at 1.15
+  const dp = OM.spring(t - 1.0, 0.5, 20);
+  SL.tf(dot, { x: 540, y: 860, s: clamp(dp, 0, 1.3) * (1 - sstep(1.12, 1.3, t) * 0.0), op: sstep(0.95, 1.0, t) * (1 - sstep(1.12, 1.25, t)) });
+  // lamp burst + wordmark + fly
+  const bur = OM.spring(t - 1.12, 0.55, 15), fly = E.expoInOut(seg(t, 2.35, 3.15));
+  const ly = lerp(860, 330, fly), ls = lerp(2.4 * clamp(bur, 0, 1.2), 0.82, fly);
+  Lamp.at({ x: 540, y: ly, s: ls, op: t < 1.12 ? 0 : 1, glow: lerp(1, 0.6, fly) + 0.15 * Math.sin(t * 2.5), shine: seg(t, 1.3, 2.0) });
+  rings.forEach((r, i) => { const k = seg(t, 1.12 + i * 0.1, 1.9 + i * 0.1); r.style.display = (k > 0 && k < 1) ? '' : 'none'; r.style.transform = `translate3d(540px,860px,0) scale(${(1 + E.expoOut(k) * 14).toFixed(2)})`; r.style.opacity = (1 - k).toFixed(2); });
+  const wr = OM.wordRise(t, 1.45, { dist: 40 });
+  wm.style.opacity = (wr.op * (1 - sstep(2.35, 2.8, t))).toFixed(3); wm.style.transform = `translate3d(0,${wr.y.toFixed(1)}px,0) scale(${wr.s.toFixed(3)})`;
+
+  // container
+  const R = t < 2.75 ? { x: 456, y: 246, w: 168, h: 168, r: 44 } : rectAt(t);
+  const showC = sstep(2.72, 2.8, t);
+  C.style.width = R.w.toFixed(1) + 'px'; C.style.height = R.h.toFixed(1) + 'px'; C.style.borderRadius = (R.r || 40) + 'px';
+  C.style.transform = `translate3d(${R.x.toFixed(2)}px,${R.y.toFixed(2)}px,0)`; C.style.opacity = showC * (1);
+  C.style.display = showC <= 0.002 ? 'none' : '';
+  // which layer
+  let act = null; FEAT.forEach(f => { if (t >= f[0] + 0.0 && t < f[0] + 1.2 + 1e-6 + 0.0) act = f[4]; });
+  const fk = {}; FEAT.forEach(f => { fk[f[4]] = sstep(f[0] + 0.25, f[0] + 0.55, t) * (1 - sstep(f[0] + 1.0, f[0] + 1.2, t)); });
+  fk.fin = sstep(9.35, 9.7, t);
+  for (const k in L) L[k].style.opacity = (fk[k] || 0).toFixed(3);
+  // layer internals
+  X.tlimg.style.left = (-100 + 0) + 'px';
+  SL.tf(X.ret, { x: 250, y: 100, s: lerp(0.5, 1.5, E.expoOut(seg(t, 3.4, 4.0))) * (1 + 0.05 * Math.sin(t * 9)), op: sstep(3.35, 3.5, t) * (1 - sstep(4.0, 4.15, t)) }); X.ret.style.left = '-75px'; X.ret.style.top = '-75px';
+  const bp = OM.popIn(t, 3.55); SL.tf(X.badge, { y: bp.dy, s: bp.s, op: bp.op });
+  const pr = OM.press(t, 4.95, { depth: 0.2 }), kp = OM.popIn(t, 4.45);
+  SL.tf(X.alt, { x: 160, y: 215 + kp.dy, s: kp.s * (1 - pr.sq * 0.5), op: kp.op }); SL.tf(X.plus, { x: 270, y: 150, op: kp.op, s: kp.s }); SL.tf(X.s, { x: 440, y: 215 + kp.dy, s: kp.s * (1 - pr.sq * 0.5), op: kp.op });
+  SL.tf(X.name, { y: OM.popIn(t, 5.1).dy, s: OM.popIn(t, 5.1).s, op: OM.popIn(t, 5.1).op });
+  const ty = OM.typeOn(t, 5.65, 'Okay, so in this lesson we fix skin tones', { cps: 34 }); document.getElementById('ctxt').textContent = ty.str;
+  // silence bars
+  const gap = lerp(260, 8, E.expoInOut(seg(t, 7.1, 7.6)));
+  X.bars.forEach(b => { const half = b._i < 12; const x = half ? 250 - gap / 2 - (11 - b._i) * 19 - 12 : 250 + gap / 2 + (b._i - 12) * 19; b.style.left = x + 'px'; const h = b._h * (0.7 + 0.3 * Math.sin(t * 8 + b._i)); b.style.height = h + 'px'; b.style.top = (280 - h / 2) + 'px'; });
+  X.cut.style.left = (250 - 70) + 'px'; X.cut.style.width = '140px'; X.cut.style.opacity = sstep(7.05, 7.2, t) * (1 - sstep(7.6, 7.75, t));
+  X.mbars.forEach((b, i) => { const h = 20 + 120 * Math.abs(Math.sin(t * 5 + i * 0.7) * Math.sin(t * 2.3 + i * 0.3)); b.style.height = h + 'px'; });
+
+  // chips: ingredients fly into the container before each morph
+  chips.forEach((c, i) => {
+    const t0 = FEAT[i][0] - 0.55, k = E.expoInOut(seg(t, t0, FEAT[i][0] + 0.1));
+    const side = i % 2 ? 1 : -1, sx = 540 + side * 560, sy = 1000 + (i - 2) * 160, tx = R.x + R.w / 2, ty2 = R.y + R.h / 2;
+    const arc = Math.sin(k * Math.PI) * 120;
+    SL.tf(c, { x: lerp(sx, tx, k), y: lerp(sy, ty2, k) - arc, s: lerp(1.0, 0.35, k), op: (k > 0 ? 1 : 0) * (1 - sstep(0.85, 1, k)) * (t > t0 ? 1 : 0), rz: k * 360 * side });
+  });
+
+  // labels (letterDrop) under the container
+  FEAT.forEach((f, i) => {
+    const on = t >= f[0] + 0.1 && t < f[1] + 0.15; const lo = OM.liftOut(t, f[1] - 0.15, { dur: 0.2, dist: 40, blur: 10 });
+    const nx = FEAT[i][3]; const y = Math.min(1240, nx.cy + nx.h / 2 + 40);
+    labs[i].style.top = y + 'px'; labs[i].style.opacity = on ? 1 : 0; labs[i].style.display = on ? '' : 'none';
+    [...labs[i].children].forEach((s, j) => { const d = OM.letterDrop(t, f[0] + 0.15, j, { stagger: 0.035, dist: 70 }); s.style.opacity = (d.op * lo.op).toFixed(3); s.style.transform = `translateY(${(d.y + lo.dy).toFixed(1)}px) scale(${d.sx.toFixed(3)},${d.sy.toFixed(3)})`; s.style.filter = lo.blur > 0.3 ? `blur(${lo.blur.toFixed(1)}px)` : 'none'; });
+  });
+
+  // beam: lamp -> container (sharp), only while container shows features
+  const bA = sstep(2.95, 3.2, t) * (1 - sstep(9.35, 9.55, t));
+  const box = SL.rectOf(C);
+  Beam.at(bA > 0 ? { sx: 540, sy: ly + 62, box, a: bA, pad: 10, endY: Math.max(ly + 130, box.y - 10) } : null);
+  return true;
+}
+
+window.__meta = { dur: 10, fps: 24 };
+window.__ready = (async () => { build(); await SL.fontReady(); seek(0); return true; })();
+window.__seek = async t => { await window.__ready; seek(t); return true; };
+window.__motion = (t0, t1) => { seek(t0); const a = SL.rectOf(C), l1 = SL.rectOf(Lamp.plate); seek(t1); const b = SL.rectOf(C), l2 = SL.rectOf(Lamp.plate); return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(a.w - b.w) / 2, Math.abs(a.h - b.h) / 2, Math.abs(l1.y - l2.y), 2); };
+</script></body></html>

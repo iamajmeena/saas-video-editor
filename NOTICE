@@ -1,0 +1,4 @@
+Required Notice: Copyright (c) 2026 Patrick. onetake is free for noncommercial use only.
+glyph-motions contains files copied from / derived from onetake (https://github.com/feitangyuan/onetake):
+lib/motion.js, lib/ui_kit.js, scripts/*, templates/*, references/*. They stay under the PolyForm Noncommercial License 1.0.0 (see LICENSE).
+Original glyph-motions additions (lib/glyph.js, SKILL.md, RULES/TECHNIQUES/GOTCHAS/CORRECTIONS/REFERENCES, examples/) are provided under the same noncommercial terms.

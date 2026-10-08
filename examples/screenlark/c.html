@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Screenlark ad - C one dive</title>
+<style>
+@font-face{font-family:'Outfit';src:url(assets/Outfit.ttf);font-weight:100 900}
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#06050d}
+body{font-family:'Outfit',system-ui,sans-serif;color:#fff}
+#stage{position:absolute;inset:0;overflow:hidden}
+#cam{position:absolute;inset:0;perspective:1500px;perspective-origin:540px 860px}
+#world{position:absolute;left:540px;top:860px;width:0;height:0;transform-style:preserve-3d}
+.lab{position:absolute;left:0;width:1080px;text-align:center;font-weight:800;letter-spacing:.02em;font-size:76px;white-space:nowrap;will-change:transform,opacity,filter;text-shadow:0 0 40px rgba(139,92,246,.9)}
+.lab small{display:block;font-size:34px;font-weight:500;letter-spacing:.01em;color:#ddd6fe;margin-top:6px;text-shadow:none}
+</style></head><body>
+<div id="stage"><div id="cam"><div id="world"></div></div></div>
+<script src="motion.js"></script><script src="sl.js"></script>
+<script>
+const { OM, SL } = window; const { clamp, lerp, seg, sstep } = OM, E = OM.ease;
+let G, Lamp, Beam, world, PC = {}, labs = [], rings = [], words = [], wm, fin, X = {};
+// pieces: assembled flat, each with a dim base layer and a "hot" window that is the torch-lit region
+const PD = {
+  side: { imgs: ['assets/sidebar.jpg'], w: 146, h: 787, x: -627, y: 0, r: 14 },
+  top: { imgs: ['assets/topbar.jpg'], w: 1254, h: 40, x: 73, y: -375, r: 10 },
+  prev: { imgs: ['assets/preview.jpg'], w: 944, h: 470, x: -71, y: -111, r: 18 },
+  panel: { imgs: ['assets/panel_style.jpg', 'assets/panel_keys.jpg', 'assets/panel_silence.jpg', 'assets/panel_audio.jpg'], w: 266, h: 470, x: 549, y: -111, r: 16 },
+  tl: { imgs: ['assets/tl_zoom.jpg', 'assets/tl_caps.jpg'], w: 1229, h: 193, x: 71, y: 242, r: 14 },
+};
+// features: [t0, t1, piece, state, region fractions [fx0,fy0,fx1,fy1], label, sub, cam]
+const FEAT = [
+  [4.0, 5.15, 'tl', 0, [0.012, 0.28, 0.44, 0.52], 'AUTO ZOOM', 'every click, smoothly', 'tl'],
+  [5.15, 6.3, 'panel', 1, [0.04, 0.36, 0.96, 0.74], 'KEY <b style="background:linear-gradient(90deg,#c4b5fd,#22d3ee);-webkit-background-clip:text;color:transparent">CAPS</b>', 'shortcuts, on screen', 'panelA'],
+  [6.3, 7.4, 'tl', 1, [0.012, 0.64, 0.52, 0.9], 'CAPTIONS', 'edit by captions', 'tl2'],
+  [7.4, 8.5, 'panel', 2, [0.04, 0.38, 0.96, 0.86], 'SILENCE REMOVE', 'dead air, gone', 'panelB'],
+  [8.5, 9.35, 'panel', 3, [0.04, 0.36, 0.96, 0.64], 'MIC RECORD', 'studio-clean voice', 'panelC'],
+];
+const CAMS = {
+  floor: { cx: 0, cy: 140, cz: -340, rx: 64, ry: 0, rz: -4 },
+  over: { cx: 0, cy: 40, cz: -540, rx: 20, ry: -10, rz: 0 },
+  tl: { cx: -300, cy: 250, cz: 560, rx: 14, ry: -14, rz: -1.5 },
+  panelA: { cx: 560, cy: -80, cz: 730, rx: 8, ry: -20, rz: 0 },
+  tl2: { cx: -230, cy: 292, cz: 520, rx: 16, ry: 16, rz: 1.5 },
+  panelB: { cx: 560, cy: -40, cz: 700, rx: 6, ry: 18, rz: 0 },
+  panelC: { cx: 560, cy: -80, cz: 700, rx: 10, ry: -12, rz: 1 },
+  out: { cx: 0, cy: 30, cz: -440, rx: 6, ry: 0, rz: 0 },
+};
+const CK = [[0, 'floor'], [2.3, 'floor'], [3.4, 'over'], [4.0, 'tl'], [5.15, 'panelA'], [6.3, 'tl2'], [7.4, 'panelB'], [8.5, 'panelC'], [9.35, 'out'], [10, 'out']];
+
+function piece(k) {
+  const d = PD[k];
+  const slab = SL.mk('div', '', world, `position:absolute;left:${-d.w / 2}px;top:${-d.h / 2}px;width:${d.w}px;height:${d.h}px;border-radius:${d.r}px;overflow:hidden;background:#0b0916;will-change:transform,opacity;box-shadow:0 0 0 1.5px rgba(196,181,253,.45),0 30px 80px -10px rgba(0,0,0,.7)`);
+  const mkLayer = css => { const L = SL.mk('div', '', slab, 'position:absolute;inset:0;' + (css || '')); const ims = d.imgs.map((s, i) => { const im = SL.mk('img', '', L, 'position:absolute;left:0;top:0;width:100%;height:100%;opacity:' + (i ? 0 : 1)); im.src = s; return im; }); return { L, ims }; };
+  const base = mkLayer('filter:brightness(.34) saturate(.85)'), hot = mkLayer('clip-path:inset(0 0 0 0 round 0px)');
+  const mark = SL.mk('div', '', slab, 'position:absolute;left:0;top:0;width:10px;height:10px;pointer-events:none');
+  const rim = SL.mk('div', '', slab, 'position:absolute;border-radius:14px;box-shadow:0 0 0 2.5px #fff,0 0 34px 6px rgba(167,139,250,.95),inset 0 0 30px rgba(196,181,253,.35);pointer-events:none;opacity:0');
+  PC[k] = { slab, base, hot, mark, rim, d };
+  return PC[k];
+}
+
+function build() {
+  const st = document.getElementById('stage'); world = document.getElementById('world');
+  G = SL.ground(); st.insertBefore(G.el, st.firstChild);
+  X.base = SL.mk('div', '', world, 'position:absolute;left:-700px;top:-393px;width:1400px;height:787px;border-radius:22px;overflow:hidden;filter:brightness(.4);box-shadow:0 0 0 1.5px rgba(196,181,253,.4)');
+  const bi = SL.mk('img', '', X.base, 'position:absolute;inset:0;width:100%;height:100%'); bi.src = 'assets/app_full.jpg';
+  for (const k of ['side', 'top', 'prev', 'panel', 'tl']) piece(k);
+  // dive extras
+  X.ret = SL.mk('div', '', world, 'position:absolute;left:-70px;top:-70px;width:140px;height:140px;border-radius:50%;border:4px solid #22d3ee;box-shadow:0 0 40px #22d3ee,inset 0 0 30px rgba(34,211,238,.5)');
+  X.alt = SL.keycap(world, 'Alt', 170); X.s = SL.keycap(world, 'S', 130);
+  X.badge = SL.glassPill(world, '<span style="color:#22d3ee;margin-right:10px">&#9906;</span>1.80&times;', 'left:-110px;top:-30px;width:220px;height:60px;font-size:32px');
+  X.cap = SL.glassPill(world, '<span id="captxt"></span>', 'left:-290px;top:-34px;width:580px;height:68px;font-size:27px;font-weight:500;justify-content:flex-start;padding-left:28px;box-sizing:border-box;background:linear-gradient(180deg,rgba(250,204,21,.92),rgba(234,179,8,.92));color:#1a1530');
+  X.hud = SL.slab(world, 'assets/hud_full.jpg', 560, 40, { r: 20 });
+  const w1 = SL.mk('div', '', world, 'position:absolute;left:-540px;width:1080px;top:-170px;text-align:center;font-size:170px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;text-shadow:0 0 60px rgba(139,92,246,.8)', 'We made');
+  const w2 = SL.mk('div', '', world, 'position:absolute;left:-540px;width:1080px;top:20px;text-align:center;font-size:150px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;text-shadow:0 0 60px rgba(139,92,246,.8)', 'the <span style="color:#c4b5fd">solution</span>');
+  words = [w1, w2];
+  Beam = SL.beam(st); Lamp = SL.lamp(st);
+  for (let i = 0; i < 3; i++) rings.push(SL.mk('div', '', st, 'position:absolute;border-radius:50%;border:3px solid rgba(221,214,254,.9);box-shadow:0 0 30px rgba(167,139,250,.9);left:0;top:0;width:100px;height:100px;margin:-50px 0 0 -50px'));
+  wm = SL.mk('img', '', st, 'position:absolute;left:190px;top:1090px;width:700px;will-change:transform,opacity'); wm.src = 'assets/word.png';
+  FEAT.forEach(f => { const d = SL.mk('div', 'lab', st, 'top:1180px', f[5] + '<small>' + f[6] + '</small>'); labs.push(d); });
+  fin = SL.glassPill(st, 'FREE &nbsp;&middot;&nbsp; Mac + Windows', 'left:190px;top:1180px;width:700px;height:120px;font-size:50px;background:linear-gradient(180deg,#8b5cf6,#6d28d9)');
+}
+
+function camAt(t) {
+  const o = {};
+  for (const f of ['cx', 'cy', 'cz', 'rx', 'ry', 'rz']) o[f] = SL.K(t, CK.map(([tt, n], i) => [tt, CAMS[n][f], i === 0 ? null : (i < 3 ? E.cubicInOut : E.expoInOut)]));
+  o.cz += SL.K(t, [[0, 240], [1.1, 0, E.expoOut]]);
+  const env = sstep(2.4, 3.2, t) * 2.5; o.cx += env * Math.sin(t * 1.5); o.cy += env * Math.cos(t * 1.2 + 1);
+  for (const th of [3.4, 4.0, 5.15, 6.3, 7.4, 8.5, 9.35]) { const s = OM.shake(t, th, { amp: 4, decay: 9, seed: Math.round(th * 100) }); o.cx += s.x; o.cy += s.y; o.rz += s.rot * 40; }
+  return o;
+}
+
+function seek(t) {
+  G.at(t, sstep(9.3, 10, t));
+  const C = camAt(t);
+  world.style.transform = `translate3d(0,0,${C.cz.toFixed(2)}px) rotateX(${C.rx.toFixed(3)}deg) rotateY(${C.ry.toFixed(3)}deg) rotateZ(${C.rz.toFixed(3)}deg) translate3d(${(-C.cx).toFixed(2)}px,${(-C.cy).toFixed(2)}px,0)`;
+  // intro words
+  const out_ = sstep(1.0, 1.3, t);
+  words.forEach((w, i) => { const r = OM.wordRise(t, 0.05 + i * 0.5, { dist: 60 }); SL.tf(w, { y: r.y, z: out_ * 1100, s: r.s, op: r.op * (1 - sstep(1.12, 1.3, t)), blur: out_ * 16 }); });
+
+  // assembled app fades in under the floor-view, then pieces light up
+  const appOp = sstep(2.1, 2.9, t);
+  const lastFin = sstep(9.35, 9.8, t);
+  X.base.style.opacity = appOp.toFixed(3);
+  const feat = FEAT.map(f => sstep(f[0] - 0.05, f[0] + 0.3, t) * (1 - sstep(f[1] - 0.05, f[1] + 0.3, t)));
+  const pstate = { panel: 0, tl: 0 }; FEAT.forEach(f => { if (t >= f[0] - 0.05) pstate[f[2]] = f[3]; });
+  let order = ['side', 'top', 'prev', 'panel', 'tl'];
+  order.forEach((k, i) => {
+    const P = PC[k], d = P.d;
+    const e = OM.spring(t - 2.0 - i * 0.06, 0.85, 13);
+    SL.tf(P.slab, { x: d.x, y: d.y, z: 1 + (1 - clamp(e, 0, 1)) * -300, op: sstep(2.0 + i * 0.06, 2.4 + i * 0.06, t) });
+    // state images
+    [P.base, P.hot].forEach(Ly => Ly.ims.forEach((im, j) => im.style.opacity = j === (pstate[k] || 0) ? 1 : 0));
+    // hot region: lerp between features of this piece
+    let hot = null, on = 0; FEAT.forEach((f, fi) => { if (f[2] === k && feat[fi] > 0.001) { on = Math.max(on, feat[fi]); if (!hot || feat[fi] > hot.w) hot = { w: feat[fi], r: f[4] }; } });
+    // smooth region while the same piece keeps the beam across features
+    let r;
+    if (hot) { r = hot.r; }
+    const full = lastFin;   // finale: everything lit
+    const bright = Math.max(on, full);
+    if (hot && bright > 0) {
+      const [fx0, fy0, fx1, fy1] = r; const a = 1 - bright;   // grow to whole piece on finale
+      const t_ = fy0 * d.h * a, b_ = (1 - fy1) * d.h * a, l_ = fx0 * d.w * a, r_ = (1 - fx1) * d.w * a;
+      const T = fy0 * d.h * (1 - full), B = (1 - fy1) * d.h * (1 - full), Lf = fx0 * d.w * (1 - full), Rt = (1 - fx1) * d.w * (1 - full);
+      P.hot.L.style.clipPath = `inset(${T.toFixed(1)}px ${Rt.toFixed(1)}px ${B.toFixed(1)}px ${Lf.toFixed(1)}px round 12px)`; P.hot.L.style.opacity = bright;
+      P.mark.style.left = Lf + 'px'; P.mark.style.top = T + 'px'; P.mark.style.width = (d.w - Lf - Rt) + 'px'; P.mark.style.height = (d.h - T - B) + 'px';
+      P.rim.style.left = Lf + 'px'; P.rim.style.top = T + 'px'; P.rim.style.width = (d.w - Lf - Rt) + 'px'; P.rim.style.height = (d.h - T - B) + 'px'; P.rim.style.opacity = on * (1 - full);
+    } else if (full > 0) {
+      P.hot.L.style.clipPath = 'inset(0 0 0 0 round 0px)'; P.hot.L.style.opacity = full; P.rim.style.opacity = 0;
+    } else { P.hot.L.style.opacity = 0; P.rim.style.opacity = 0; }
+    P.base.L.style.filter = `brightness(${lerp(0.34, 1, full).toFixed(3)}) saturate(.85)`;
+  });
+  X.base.style.filter = `brightness(${lerp(0.4, 0.95, lastFin).toFixed(3)})`;
+
+  // extras tied to the real UI positions (world coords)
+  let q = OM.popIn(t, 4.3); const zr = E.expoOut(seg(t, 4.2, 4.9));
+  SL.tf(X.ret, { x: -420, y: 250, z: 2, s: lerp(0.5, 1.4, zr) * (1 + 0.05 * Math.sin(t * 9)), op: q.op * (1 - sstep(5.0, 5.15, t)) });
+  SL.tf(X.badge, { x: -250, y: 190, z: 40, s: q.s, op: q.op * (1 - sstep(5.0, 5.15, t)) });
+  q = OM.popIn(t, 5.4); const pr = OM.press(t, 5.95, { depth: 0.2 }), kop = q.op * (1 - sstep(6.2, 6.35, t));
+  SL.tf(X.alt, { x: 395, y: -300, z: 60, s: 0.62 * q.s * (1 - pr.sq * 0.5), op: kop }); SL.tf(X.s, { x: 500, y: -300, z: 60, s: 0.62 * q.s * (1 - pr.sq * 0.5), op: kop });
+  q = OM.popIn(t, 6.45);
+  document.getElementById('captxt').textContent = OM.typeOn(t, 6.5, 'Okay, so in this lesson we fix skin tones', { cps: 34 }).str;
+  SL.tf(X.cap, { x: -150, y: 215, z: 60, rx: -4, s: q.s, op: q.op * (1 - sstep(7.3, 7.45, t)) });
+  q = OM.popIn(t, 8.55);
+  SL.tf(X.hud, { x: 430, y: -300, z: 60, s: q.s, op: q.op * (1 - sstep(9.3, 9.45, t)) });
+
+  // lamp: giant plate pull-back, then up to the top
+  const open = E.expoOut(seg(t, 1.1, 2.4)), fly = E.expoInOut(seg(t, 2.35, 3.2));
+  const ls = lerp(Math.exp(lerp(Math.log(9), Math.log(2.4), open)), 0.82, fly), ly = lerp(860, 330, fly);
+  Lamp.at({ x: 540, y: ly, s: t < 1.05 ? 0.001 : ls, op: t < 1.05 ? 0 : 1, glow: lerp(1, 0.6, fly) + 0.15 * Math.sin(t * 2.5), shine: seg(t, 1.2, 2.0) });
+  rings.forEach((r, i) => { const k = seg(t, 1.9 + i * 0.1, 2.7 + i * 0.1); r.style.display = (k > 0 && k < 1) ? '' : 'none'; r.style.transform = `translate3d(540px,860px,0) scale(${(1 + E.expoOut(k) * 14).toFixed(2)})`; r.style.opacity = ((1 - k) * 0.9).toFixed(2); });
+  const wr = OM.wordRise(t, 1.9, { dist: 40 });
+  wm.style.opacity = (wr.op * (1 - sstep(2.4, 2.8, t))).toFixed(3); wm.style.transform = `translate3d(0,${wr.y.toFixed(1)}px,0) scale(${wr.s.toFixed(3)})`;
+
+  // labels
+  FEAT.forEach((f, i) => {
+    const r = OM.wordRise(t, f[0] + 0.12, { dist: 50, omega: 20 }), lo = OM.liftOut(t, f[1] - 0.12, { dur: 0.2, dist: -40, blur: 12 });
+    const on = t >= f[0] && t < f[1] + 0.2;
+    SL.tf(labs[i], { y: r.y + lo.dy, s: r.s * lo.s, op: on ? r.op * lo.op : 0, blur: lo.blur + (1 - r.op) * 10 });
+  });
+  const fr = OM.wordRise(t, 9.45, { dist: 30 }); SL.tf(fin, { y: fr.y, s: fr.s, op: fr.op });
+
+  // torch: beam follows the lit region continuously (sweeps between regions)
+  let box = null, bA = 0, bi = -1; FEAT.forEach((f, i) => { if (t >= f[0] - 0.05 && t < f[1] + 0.05) bi = i; });
+  if (bi >= 0) {
+    const f = FEAT[bi]; const rc = SL.rectOf(PC[f[2]].mark);
+    let rp = rc, k = 1;
+    if (bi > 0) { rp = SL.rectOf(PC[FEAT[bi - 1][2]].mark); k = sstep(f[0] - 0.05, f[0] + 0.5, t); }
+    box = { x: lerp(rp.x, rc.x, k), y: lerp(rp.y, rc.y, k), w: lerp(rp.w, rc.w, k), h: lerp(rp.h, rc.h, k) };
+    bA = (bi === 0 ? sstep(3.7, 4.05, t) : 1) * (1 - sstep(9.3, 9.45, t));
+  } else if (t > 2.9 && t < 4.05) { box = { x: 540 - 380 + 260 * Math.sin((t - 2.9) * 2.6), y: 760, w: 760, h: 300 }; bA = sstep(2.9, 3.3, t); }   // sweep across the app while it assembles
+  Beam.at(box && bA > 0 ? { sx: 540, sy: ly + 62, box, a: bA, pad: 8, endY: Math.max(ly + 130, box.y - 8) } : null);
+  return true;
+}
+
+window.__meta = { dur: 10, fps: 24 };
+window.__ready = (async () => { build(); await SL.fontReady(); seek(0); return true; })();
+window.__seek = async t => { await window.__ready; seek(t); return true; };
+window.__motion = (t0, t1) => { const ks = ['tl', 'panel', 'prev']; seek(t0); const a = ks.map(k => SL.rectOf(PC[k].slab)); seek(t1); const b = ks.map(k => SL.rectOf(PC[k].slab)); let m = 2; a.forEach((r, i) => { const s = b[i]; m = Math.max(m, Math.abs(r.x - s.x), Math.abs(r.y - s.y), Math.abs(r.w - s.w) / 2, Math.abs(r.h - s.h) / 2); }); return m; };
+</script></body></html>

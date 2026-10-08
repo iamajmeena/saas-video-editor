@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Screenlark ad - Q1 reveal + UI build (pearl)</title>
+<style>
+@font-face{font-family:Outfit;src:url(assets/Outfit.ttf);font-weight:100 900}
+@font-face{font-family:Inter;src:url(cg/Inter.woff2)}
+*{box-sizing:border-box}
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#f5f3fa;font-family:Inter;color:#eee}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:#f3eefb}
+#bg{position:absolute;inset:0}
+#noise{position:absolute;inset:0;width:1080px;height:1920px;mix-blend-mode:overlay}
+#brand{position:absolute;left:0;top:0;width:220px;will-change:transform,opacity;z-index:12}
+.hl{position:absolute;left:80px;width:930px;font:600 105px/1.06 Outfit;letter-spacing:-5px;color:#191520;z-index:10;white-space:nowrap;will-change:transform,opacity}
+.hl.intro{font-size:150px;letter-spacing:-7px}
+#sub{position:absolute;left:85px;top:475px;font:26px Inter;color:#6e667c;letter-spacing:.1px;z-index:10;will-change:transform,opacity}
+#logoBig{position:absolute;left:0;top:0;width:640px;will-change:transform,opacity;z-index:12}
+.ring{position:absolute;left:0;top:0;width:100px;height:100px;margin:-50px 0 0 -50px;border-radius:50%;border:3px solid rgba(139,92,246,.55);z-index:11;will-change:transform,opacity}
+#bloom{position:absolute;left:0;top:0;width:1100px;height:1100px;margin:-550px 0 0 -550px;border-radius:50%;background:radial-gradient(closest-side,rgba(167,139,250,.55),rgba(167,139,250,0));z-index:9;will-change:transform,opacity}
+/*UI_CSS*/
+#editor{z-index:5}
+#inspector{z-index:6}
+#dim{position:absolute;left:0;top:0;background:rgba(9,6,24,.62);z-index:20;pointer-events:none;will-change:clip-path,transform}
+#rim{position:absolute;border:2.5px solid #fff;border-radius:14px;box-shadow:0 0 0 1px rgba(167,139,250,.9),0 0 36px 6px rgba(139,92,246,.85);z-index:21;pointer-events:none;will-change:transform,opacity}
+#cursor{z-index:30}
+#cring{position:absolute;left:0;top:0;width:90px;height:90px;margin:-45px 0 0 -45px;border-radius:50%;border:4px solid #8b5cf6;box-shadow:0 0 24px #a78bfa;z-index:29;will-change:transform,opacity}
+</style></head><body>
+<main id="stage">
+<div id="bg"></div><canvas id="noise" width="1080" height="1920"></canvas>
+<img id="brand" src="cg/logo_on_light.svg">
+<div class="hl intro" id="i1">We made</div><div class="hl intro" id="i2">the solution.</div>
+<div class="hl" id="line1">Record. Edit.</div><div class="hl" id="line2">All in one.</div><div id="sub">Everything your recording needs.</div>
+<div id="bloom"></div><div class="ring" id="r1"></div><div class="ring" id="r2"></div><img id="logoBig" src="cg/logo_on_light.svg">
+<!--EDITOR-->
+<!--INSPECTOR-->
+<div id="dim"></div><div id="rim"></div>
+<div id="cring"></div><svg id="cursor" viewBox="0 0 51 63"><path d="M3 3L3 49L15 37L25 58L35 53L25 33L44 32Z" fill="#191321" stroke="white" stroke-width="4" stroke-linejoin="round"/></svg>
+</main>
+<script src="motion.js"></script><script src="sl.js"></script><script src="cg/waveform.js"></script>
+<script>
+const { OM, SL } = window; const { clamp, lerp, seg, sstep } = OM, E = OM.ease; const $ = id => document.getElementById(id);
+const tw = (t, a, b, e = E.cubicInOut) => OM.tween(t, a, b, e);
+const q = s => document.querySelector(s), qa = s => [...document.querySelectorAll(s)];
+const icon = name => { const paths = { record: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/>', media: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 4v16M15 4v16M4 9h16M4 15h16"/>', edit: '<path d="M4 20h16M5 15L16 4l4 4-11 11H5Z"/>', effects: '<path d="M4 20L18 6M15 4l5 5M5 4v5M2 6h6M18 15v6M15 18h6"/>', ai: '<path d="M12 3L15 9l6 3-6 3-3 6-3-6-6-3 6-3Z"/>', settings: '<circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M5 19l3-3M16 8l3-3"/>', search: '<circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/>' }; return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.edit}</svg>`; };
+// ---- static content of the rebuilt editor (same as the reference UI)
+$('nav').innerHTML = ['Record', 'Media', 'Edit', 'Effects', 'AI Tools', 'Settings'].map((s, i) => `<div class="sl-navitem ${i === 2 ? 'active' : ''}">${icon(['record', 'media', 'edit', 'effects', 'ai', 'settings'][i])}${s}</div>`).join('');
+$('tools').innerHTML = ['search', 'effects', 'record', 'edit', 'edit', 'media', 'record', 'media'].map(icon).join('') + '<span>16:9 &#8964;</span>';
+$('ruler').innerHTML = Array.from({ length: 9 }, (_, i) => `<span style="position:absolute;left:${i * 210}px;top:16px">0:${String(i * 5).padStart(2, '0')}</span><i style="position:absolute;left:${i * 210 + 9}px;top:2px;height:10px;border-left:1px solid #ffffff26"></i>`).join('') + [['Serial nodes', 20], ['Qualifier', 377], ['Background node', 1010], ['Before / after', 1349]].map(a => `<b class="sl-mark" style="left:${a[1]}px">${a[0]}</b>`).join('');
+$('strip').innerHTML = Array.from({ length: 12 }, () => '<img src="cg/recorded_content.jpg">').join('');
+$('zooms').innerHTML = [[.8, 4], [7.3, 12.8], [12.8, 16], [19.3, 24.5], [24.8, 28], [31.3, 35], [36.8, 40]].map(a => `<div class="sl-zoom" style="left:${a[0] * 42}px;width:${(a[1] - a[0]) * 42}px">&#8853; 1.80x</div>`).join('');
+$('wave').setAttribute('d', 'M0 28L' + REAL_WAVE.map((v, i) => `${(i / 899 * 1685).toFixed(2)},${(28 - 26 * Math.sqrt(v)).toFixed(2)}`).join('L') + 'L1685 28Z');
+$('tabs').innerHTML = ['Style', 'Layout', 'Effects', 'Camera', 'Zoom', 'Markers', 'Captions', 'Transcript', 'Crop', 'Export'].map((s, i) => `<div class="sl-tab ${i === 0 ? 'active' : ''}" id="tab${i}">${s}</div>`).join('');
+$('style-content').style.opacity = 1; $('caption-content').style.opacity = 0; $('output-caption').style.opacity = 0;
+$('search').innerHTML = icon('search') + 'Search 15 captions';
+const PARTS = { nav: qa('.sl-navitem'), top: qa('.sl-top > *'), tools: qa('.sl-tools > *'), tabs: qa('.sl-tab'), tiles: qa('.sl-bgtiles > div'), frames: qa('.sl-strip img'), zooms: qa('.sl-zoom'), marks: qa('.sl-mark'), play: qa('.sl-playbar > *') };
+const NOISE = (() => { const t0 = document.createElement('canvas'); t0.width = t0.height = 256; const g0 = t0.getContext('2d'), d = g0.createImageData(256, 256), r = OM.rng(5); for (let i = 0; i < 65536; i++) { const v = r() > 0.5 ? 255 : 0; d.data[i * 4] = d.data[i * 4 + 1] = d.data[i * 4 + 2] = v; d.data[i * 4 + 3] = 9; } g0.putImageData(d, 0, 0); const c = $('noise'); c.width = 1080; c.height = 1920; const g = c.getContext('2d'); g.fillStyle = g.createPattern(t0, 'repeat'); g.fillRect(0, 0, 1080, 1920); return 1; })();
+
+// ---- ChatGPT-style progressive build (own timeline): shell empty -> parts arrive in stagger; tb = build clock
+function buildUI(tb, t) {
+  const pending = [];
+  const arrive = (el, start, { dist = 30, axis = 'y', duration = .38 } = {}) => { const k = tw(tb, start, start + duration, E.quartOut); el.style.opacity = k; el.style.transform = `translate${axis.toUpperCase()}(${dist * (1 - k)}px)`; return k; };
+  const sweep = (el, start, duration = .5) => { const k = tw(tb, start, start + duration, E.cubicInOut); el.style.clipPath = `inset(0 ${100 * (1 - k)}% 0 0)`; return k; };
+  sweep(q('.sl-nav'), .08, .45); PARTS.nav.forEach((el, i) => arrive(el, .22 + i * .075, { axis: 'x', dist: -45 }));
+  arrive(q('.sl-brand'), .12, { dist: -15 }); PARTS.top.forEach((el, i) => arrive(el, .36 + i * .12, { dist: -25 }));
+  arrive(q('.sl-preview'), .46, { dist: 60, duration: .55 }); arrive(q('.sl-canvas'), .7, { dist: 55, duration: .55 }); sweep(q('.sl-recording'), .86, .65);
+  arrive(q('.sl-playbar'), 1.04, { dist: 20 }); PARTS.play.forEach((el, i) => arrive(el, 1.1 + i * .055, { dist: 15, duration: .3 }));
+  arrive(q('.sl-timeline'), .94, { dist: 90, duration: .55 }); PARTS.tools.forEach((el, i) => arrive(el, 1.08 + i * .045, { dist: 12 })); sweep($('ruler'), 1.22, .72);
+  PARTS.frames.forEach((el, i) => { const k = arrive(el, 1.34 + i * .065, { dist: 25, duration: .28 }); el.style.clipPath = `inset(0 ${100 * (1 - k)}% 0 0)`; });
+  PARTS.zooms.forEach((el, i) => { const k = tw(tb, 1.74 + i * .06, 2.1 + i * .06, E.quartOut); el.style.transform = `scaleX(${k})`; el.style.transformOrigin = '0 50%'; el.style.opacity = k; });
+  PARTS.marks.forEach((el, i) => arrive(el, 1.8 + i * .07, { dist: -14 })); sweep(q('.sl-wave'), 1.52, 1.15);
+  $('inspector').style.opacity = tw(tb, .75, 1.16, E.quartOut); PARTS.tabs.forEach((el, i) => arrive(el, .85 + i * .075, { dist: -15, duration: .28 }));
+  arrive(q('.sl-style h3'), 1.3, { dist: 16 }); arrive(q('.sl-styletabs'), 1.43, { dist: 18 }); arrive(q('.sl-style p'), 2.17, { dist: 12 }); arrive(q('.sl-diag'), 1.9, { dist: 15 });
+  PARTS.tiles.forEach((el, i) => { arrive(el, 1.65 + i * .12, { dist: 20, duration: .5 }); el.style.backgroundSize = '200% 100%'; el.style.backgroundPosition = `${100 * tw(tb, 1.7 + i * .12, 3.4)}% 50%`; });
+  // preview plays the REAL recorded frames (120 jpg)
+  const n = clamp(1 + Math.round(clamp(tb - 1.4, 0, 3.6) * 30), 1, 120), img = q('.sl-recording'), src = `cg/playback/${String(n).padStart(4, '0')}.jpg`;
+  if (img.getAttribute('src') !== src) { img.src = src; pending.push(img.decode().catch(() => { })); }
+  const pb = lerp(0, 3.8, tw(tb, 1.4, 3.6, E.linear)); $('playhead').style.left = pb * 42 + 'px'; q('.sl-playbar > span').innerHTML = `00:${pb.toFixed(1).padStart(4, '0')} / <span style="color:#586579">00:40.0</span>`;
+  q('.sl-progress').style.background = `linear-gradient(90deg,#a78bfa ${pb / 40 * 100}%,#ffffff1c ${pb / 40 * 100}%)`;
+  return pending;
+}
+
+// ---- poses (own camera): editor point (cx,cy) is placed at screen anchor
+const AX = 540, AY = 960;
+const CK = [  // t, s, cx, cy
+  [0, 0.5, 960, 540], [3.0, 0.5, 960, 540], [5.2, 0.52, 960, 540],
+  [6.0, 0.84, 700, 846], [7.15, 0.82, 862, 366], [8.35, 0.84, 760, 912], [9.5, 0.5, 960, 540], [10.4, 0.5, 960, 540]];
+function pose(t) {
+  const ks = k => CK.map((a, i) => [a[0], a[k], i === 0 ? null : (i < 3 ? E.sineInOut : E.expoInOut)]);
+  const s = Math.exp(SL.K(t, CK.map((a, i) => [a[0], Math.log(a[1]), i === 0 ? null : (i < 3 ? E.sineInOut : E.expoInOut)])));
+  const cx = SL.K(t, ks(2)), cy = SL.K(t, ks(3));
+  let sx = 0, sy = 0; [3.0, 6.0, 7.15, 8.35, 9.5].forEach(th => { const h = OM.shake(t, th, { amp: 5, decay: 9, seed: Math.round(th * 100) }); sx += h.x; sy += h.y; });
+  const ent = tw(t, 2.9, 3.7, E.quartOut);
+  return { x: AX - cx * s + sx, y: AY - cy * s + sy + 110 * (1 - ent), s };
+}
+const BOX = { zoom: [236, 826, 1230, 44], prev: [356, 82, 1012, 568], wave: [214, 893, 1685, 34] };
+const HOPS = [[6.0, 7.15, 'zoom'], [7.15, 8.35, 'prev'], [8.35, 9.5, 'wave']];
+let Beam; const boxScreen = (P, b) => ({ x: P.x + b[0] * P.s, y: P.y + b[1] * P.s, w: b[2] * P.s, h: b[3] * P.s });
+
+function bgAt(t) {
+  const a = (x, y) => `${(x).toFixed(1)}% ${(y).toFixed(1)}%`;
+  $('bg').style.background = `radial-gradient(ellipse at ${a(4 + 5 * Math.sin(t * .4), 30 + 4 * Math.cos(t * .3))}, #f6e2efaa 0, transparent 48%),radial-gradient(ellipse at ${a(97 - 6 * Math.sin(t * .35 + 1), 68 + 5 * Math.cos(t * .33))}, #bb95ef99 0, transparent 56%),radial-gradient(ellipse at ${a(60 + 10 * Math.sin(t * .22), 100)}, #a77fe099 0, transparent 40%),linear-gradient(155deg,#fbf8ff 0%,#eee5fb 35%,#dcc8f3 65%,#b596dd 100%)`;
+}
+
+function seek(t) {
+  bgAt(t);
+  // ---- intro words (0 - 1.2) : left aligned, big
+  [['i1', 640, 0.05], ['i2', 820, 0.5]].forEach(([id, y, t0]) => { const r = OM.wordRise(t, t0, { dist: 70 }), lo = OM.liftOut(t, 1.0, { dur: 0.22, dist: -60, blur: 14 }); const e = $(id); e.style.top = y + 'px'; e.style.opacity = (r.op * lo.op).toFixed(3); e.style.transform = `translateY(${(r.y + lo.dy).toFixed(1)}px) scale(${(r.s * lo.s).toFixed(3)})`; e.style.filter = lo.blur > .3 ? `blur(${lo.blur.toFixed(1)}px)` : 'none'; });
+  // ---- logo reveal (1.05 - 3.1) then flies to the brand corner
+  const lp = OM.spring(t - 1.05, 0.62, 15), fly = E.expoInOut(seg(t, 2.35, 3.15));
+  const lw = $('logoBig'); const sc = lerp(1, 220 / 640, fly) * clamp(lp, 0, 1.1);
+  const lx = lerp(540, 84 + 110, fly), ly = lerp(930, 95 + 28, fly);
+  lw.style.transformOrigin = '50% 50%'; lw.style.left = (-320) + 'px'; lw.style.top = '-60px'; lw.style.transform = `translate(${lx}px,${ly}px) scale(${sc.toFixed(4)})`; lw.style.opacity = (t < 1.05 ? 0 : sstep(1.05, 1.15, t) * (1 - sstep(3.1, 3.2, t))).toFixed(3);
+  const bl = $('bloom'); const bk = seg(t, 1.0, 2.3); bl.style.transform = `translate(540px,930px) scale(${lerp(.3, 1, E.expoOut(bk)).toFixed(3)})`; bl.style.opacity = (Math.sin(bk * Math.PI) * 0.9 * (1 - sstep(2.3, 2.9, t))).toFixed(3);
+  ['r1', 'r2'].forEach((id, i) => { const k = seg(t, 1.05 + i * .12, 1.9 + i * .12), e = $(id); e.style.opacity = k > 0 && k < 1 ? ((1 - k) * .9).toFixed(2) : 0; e.style.transform = `translate(540px,930px) scale(${(1 + E.expoOut(k) * 12).toFixed(2)})`; });
+  const br = $('brand'); br.style.transform = `translate(84px,95px)`; br.style.opacity = sstep(3.15, 3.35, t).toFixed(3);
+  // ---- headline + sub (after logo lands)
+  const hide = sstep(5.35, 5.75, t) * (1 - sstep(9.45, 9.85, t));      // headline lifts away while the camera dives into the UI, returns for the finale
+  [['line1', 210, 3.1], ['line2', 321, 3.2]].forEach(([id, y, t0]) => { const z = OM.wordRise(t, t0, { dist: 50, omega: 20, zeta: .88 }); const e = $(id); e.style.top = y + 'px'; e.style.opacity = (z.op * (1 - hide)).toFixed(3); e.style.transform = `translateY(${(z.y - 90 * hide).toFixed(1)}px)`; e.style.filter = hide > .05 ? `blur(${(hide * 10).toFixed(1)}px)` : 'none'; });
+  const sb = OM.wordRise(t, 3.45, { dist: 20 }); $('sub').style.opacity = (sb.op * (1 - hide)).toFixed(3); $('sub').style.transform = `translateY(${(sb.y - 60 * hide).toFixed(1)}px)`;
+  // ---- editor: build clock + pose
+  const P = pose(t), tb = Math.max(0, (t - 3.0) * 1.12);
+  const ed = $('editor'); ed.style.transform = `translate(${P.x}px,${P.y}px) scale(${P.s})`; ed.style.opacity = sstep(2.9, 3.1, t);
+  const ins = $('inspector'); ins.style.transform = `translate(${P.x + 1530 * P.s}px,${P.y + 66 * P.s}px) scale(${P.s})`;
+  const pending = buildUI(tb, t);
+  // ---- torch-lit hops: dim everything except the feature, rim + beam from above the frame, cursor clicks
+  let hop = null; HOPS.forEach(h => { if (t >= h[0] - 0.05 && t < h[1]) hop = h; });
+  const dim = $('dim'), rim = $('rim');
+  const full = { x: P.x, y: P.y, w: 1920 * P.s, h: 1080 * P.s };
+  let beamBox = null, a = 0;
+  if (hop) {
+    const prev = HOPS[HOPS.indexOf(hop) - 1]; const bx = boxScreen(P, BOX[hop[2]]); const k = prev ? sstep(hop[0], hop[0] + .45, t) : 1; const px = prev ? boxScreen(P, BOX[prev[2]]) : bx;
+    const bb = { x: lerp(px.x, bx.x, k), y: lerp(px.y, bx.y, k), w: lerp(px.w, bx.w, k), h: lerp(px.h, bx.h, k) };
+    a = sstep(hop[0] - .05, hop[0] + .25, t) * (1 - (hop === HOPS[HOPS.length - 1] ? sstep(9.2, 9.5, t) : 0));
+    dim.style.display = ''; dim.style.left = full.x + 'px'; dim.style.top = full.y + 'px'; dim.style.width = full.w + 'px'; dim.style.height = full.h + 'px'; dim.style.opacity = a.toFixed(3);
+    const hx = bb.x - full.x, hy = bb.y - full.y; dim.style.clipPath = `polygon(evenodd,0 0,${full.w}px 0,${full.w}px ${full.h}px,0 ${full.h}px,0 0,${hx}px ${hy}px,${hx}px ${hy + bb.h}px,${hx + bb.w}px ${hy + bb.h}px,${hx + bb.w}px ${hy}px,${hx}px ${hy}px)`;
+    rim.style.display = ''; rim.style.left = bb.x + 'px'; rim.style.top = bb.y + 'px'; rim.style.width = bb.w + 'px'; rim.style.height = bb.h + 'px'; rim.style.opacity = a.toFixed(3);
+    beamBox = bb;
+  } else { dim.style.display = 'none'; rim.style.display = 'none'; }
+  Beam.at(beamBox && a > .01 ? { sx: 540, sy: -70, box: beamBox, a: a * .8, pad: 8, endY: Math.max(0, beamBox.y - 8) } : null);
+  // ---- cursor
+  const KN = [{ t: 5.4, x: 960, y: 1500 }]; HOPS.forEach(h => { const b = boxScreen(pose(h[0] + .2), BOX[h[2]]); KN.push({ t: h[0] + .2, x: b.x + b.w * .35, y: b.y + b.h * .5 }, { t: h[1] - .1, x: b.x + b.w * .6, y: b.y + b.h * .55 }); }); KN.push({ t: 10.4, x: 700, y: 1300 });
+  const cp = OM.cursor(t, KN, HOPS.map(h => h[0] + .35)); const cvis = sstep(5.5, 5.8, t) * (1 - sstep(9.6, 9.9, t));
+  $('cursor').style.transform = `translate(${cp.x}px,${cp.y}px) scale(${cp.s})`; $('cursor').style.opacity = cvis.toFixed(2);
+  let rk = 0; HOPS.forEach(h => { const k = seg(t, h[0] + .35, h[0] + .85); if (k > 0 && k < 1) rk = k; });
+  $('cring').style.opacity = rk ? ((1 - rk) * .9).toFixed(2) : 0; $('cring').style.transform = `translate(${cp.x}px,${cp.y}px) scale(${(.4 + rk * 1.6).toFixed(2)})`;
+  return Promise.all(pending).then(() => true);
+}
+window.__meta = { dur: 10.4, fps: 24 };
+window.__ready = (async () => { Beam = SL.beam($('stage')); Beam.el.style.zIndex = 22; await SL.fontReady(); await seek(0); return true; })();
+window.__seek = async t => { await window.__ready; return seek(t); };
+window.__motion = (t0, t1) => { const m = Math.max(t0, t1); return (m > 2.3 && m < 3.9) || (m > 5.9 && m < 6.6) || (m > 7.1 && m < 7.7) || (m > 8.3 && m < 8.9) || (m > 9.4 && m < 10.2) ? 220 : 34; };
+</script></body></html>

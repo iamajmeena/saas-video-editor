@@ -29,3 +29,7 @@ While doing so, every new learning is written HERE immediately (not just in `../
 
 ## Credit
 Derivative workflow of the `onetake` skill by Patrick (github.com/feitangyuan/onetake), PolyForm Noncommercial 1.0.0. This repo holds only notes/rules, not onetake code.
+
+## Contents now
+`SKILL.md` (entry) · `lib/` (onetake motion.js + ui_kit.js + our glyph.js) · `scripts/` (render, stills, vstills, probe, analyze_ref, ...) ·
+`templates/` · `references/` (onetake docs) · `examples/` (Juno, DDR, Screenlark build code, no media) · `LICENSE` + `NOTICE`.

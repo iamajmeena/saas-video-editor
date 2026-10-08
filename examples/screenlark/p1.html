@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Screenlark reel - P1 hook + competitors (0-32.8s)</title>
+<style>
+@font-face{font-family:'Outfit';src:url(assets/Outfit.ttf);font-weight:100 900}
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#06050d}
+body{font-family:'Outfit',system-ui,sans-serif;color:#fff}
+#stage{position:absolute;inset:0;overflow:hidden}
+.abs{position:absolute;left:0;top:0;will-change:transform,opacity}
+.big{position:absolute;left:0;width:1080px;text-align:center;font-weight:800;white-space:nowrap;will-change:transform,opacity,filter}
+.big span{display:inline-block;will-change:transform,opacity}
+.glow{text-shadow:0 0 44px rgba(139,92,246,.95),0 4px 30px rgba(0,0,0,.6)}
+</style></head><body>
+<div id="stage"></div>
+<script src="motion.js"></script><script src="sl.js"></script>
+<script>
+const { OM, SL } = window; const { clamp, lerp, seg, sstep } = OM, E = OM.ease;
+const NF = 797;
+let G, FC, FI, V = {}, T = {}, X = {}, tiles = [], plates = [], chips = [], texts = {}, rings = [];
+
+const KS = [ // face layout keyframes: t, x,y,w,h,r, s, fx,fy, br(brightness)
+  [0, 0, 0, 1080, 1920, 0, 1.00, 540, 960, 1],
+  [1.45, 0, 0, 1080, 1920, 0, 1.13, 540, 900, 1],
+  [1.95, 330, 232, 420, 420, 210, 1.25, 555, 560, 1],
+  [3.2, 330, 232, 420, 420, 210, 1.25, 555, 560, 1],
+  [3.75, 70, 1070, 220, 220, 110, 0.62, 555, 560, 1],
+  [8.1, 70, 1070, 220, 220, 110, 0.62, 555, 560, 1],
+  [8.75, 0, 0, 1080, 1920, 0, 1.04, 540, 960, 0.95],
+  [16.1, 0, 0, 1080, 1920, 0, 1.12, 540, 930, 0.92],
+  [16.8, 40, 905, 1000, 640, 40, 1.55, 555, 520, 1],
+  [20.6, 40, 905, 1000, 640, 40, 1.55, 555, 520, 1],
+  [21.3, 0, 0, 1080, 1920, 0, 1.05, 540, 960, 0.9],
+  [30.2, 0, 0, 1080, 1920, 0, 1.14, 540, 900, 0.9],
+  [32.7, 0, 0, 1080, 1920, 0, 1.30, 540, 860, 0.0],
+];
+function faceLayout(t) {
+  const o = {}; ['x', 'y', 'w', 'h', 'r', 's', 'fx', 'fy', 'br'].forEach((f, j) => {
+    o[f] = SL.K(t, KS.map((k, i) => [k[0], k[j + 1], i === 0 ? null : E.expoInOut]));
+  }); return o;
+}
+
+const WALL = ['preview', 'tl_zoom', 'panel_keys', 'tl_caps', 'record_full', 'panel_silence', 'hud_full', 'panel_audio', 'panel_caps'];
+
+function build() {
+  const st = document.getElementById('stage');
+  G = SL.ground(); st.appendChild(G.el);
+  // face
+  FC = SL.mk('div', '', st, 'position:absolute;overflow:hidden;will-change:transform,width,height,border-radius,filter;z-index:2;background:#000');
+  FI = SL.mk('img', '', FC, 'position:absolute;will-change:transform'); FI.src = 'face/f0001.jpg';
+  X.faceRim = SL.mk('div', '', st, 'position:absolute;pointer-events:none;z-index:3;border-radius:50%;box-shadow:0 0 0 3px rgba(221,214,254,.9),0 0 50px rgba(139,92,246,.8)');
+  // legibility gradients over the face (fullscreen beats only)
+  X.gtop = SL.mk('div', '', st, 'position:absolute;left:0;top:0;width:1080px;height:520px;z-index:3;background:linear-gradient(rgba(5,4,12,.62),rgba(5,4,12,0));pointer-events:none');
+  X.gbot = SL.mk('div', '', st, 'position:absolute;left:0;top:760px;width:1080px;height:1160px;z-index:3;background:linear-gradient(rgba(5,4,12,0),rgba(5,4,12,.62) 55%,rgba(5,4,12,.62));pointer-events:none');
+
+  // ---- HOOK elements
+  X.ssPill = SL.glassPill(st, '<img src="assets/ss_icon.png" style="width:62px;height:62px;margin-right:16px;border-radius:15px"><span style="font-size:50px">Screen Studio</span>', 'left:0;top:0;width:520px;height:92px;z-index:6');
+  X.price = SL.glassPill(st, '<span style="color:#fca5a5;text-decoration:line-through;text-decoration-thickness:5px;font-size:46px">$20 / month</span>', 'left:0;top:0;width:330px;height:80px;z-index:6;background:linear-gradient(180deg,rgba(239,68,68,.45),rgba(127,29,29,.45));border-color:rgba(252,165,165,.8)');
+  T.free = SL.mk('div', 'big glow', st, 'top:0;font-size:230px;z-index:6;letter-spacing:-.02em;color:#e9e0ff', ''); T.free.innerHTML = [...'FREE'].map(c => `<span>${c}</span>`).join('');
+  T.alt = SL.mk('div', 'big glow', st, 'top:0;font-size:92px;z-index:6;letter-spacing:.06em', ''); T.alt.innerHTML = [...'ALTERNATIVE'].map(c => `<span>${c}</span>`).join('');
+  // wall of real UI tiles (3x3), centre tile = the recording card
+  X.wall = SL.mk('div', '', st, 'position:absolute;left:0;top:0;width:1080px;height:1920px;perspective:1300px;perspective-origin:540px 960px;z-index:4;pointer-events:none');
+  X.wallIn = SL.mk('div', '', X.wall, 'position:absolute;left:540px;top:1230px;width:0;height:0;transform-style:preserve-3d');
+  WALL.forEach((n, i) => {
+    const e = SL.mk('div', '', X.wallIn, 'position:absolute;left:-150px;top:-95px;width:300px;height:190px;border-radius:20px;overflow:hidden;background:#0b0916;will-change:transform,opacity,filter;box-shadow:0 0 0 1.5px rgba(196,181,253,.6),0 20px 50px rgba(0,0,0,.6),0 0 30px rgba(139,92,246,.45)');
+    const im = SL.mk('img', '', e, 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;transform-origin:0 0;will-change:transform'); im.src = 'assets/' + n + '.jpg'; e._im = im; e._i = i; tiles.push(e);
+    SL.mk('div', '', e, 'position:absolute;inset:0;border-radius:inherit;background:linear-gradient(125deg,rgba(255,255,255,.16),rgba(255,255,255,0) 32%);pointer-events:none');
+  });
+  X.scan = SL.mk('div', '', X.wallIn, 'position:absolute;left:-560px;top:0;width:1120px;height:8px;margin-top:-4px;border-radius:4px;background:linear-gradient(90deg,rgba(255,255,255,0),#fff 50%,rgba(255,255,255,0));box-shadow:0 0 40px 10px rgba(196,181,253,.9);mix-blend-mode:screen');
+  X.cur = SL.mk('div', '', st, 'position:absolute;left:0;top:0;width:90px;height:120px;z-index:9;will-change:transform;filter:drop-shadow(0 8px 14px rgba(0,0,0,.55))');
+  X.cur.innerHTML = '<svg viewBox="0 0 24 32" width="90" height="120"><path d="M3 2v22l5.5-5 4 8.5 3.4-1.6-4-8.2H20z" fill="#fff" stroke="#0b0916" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  X.curRing = SL.mk('div', '', st, 'position:absolute;left:0;top:0;width:90px;height:90px;margin:-45px 0 0 -45px;border-radius:50%;border:4px solid #fff;box-shadow:0 0 30px #c4b5fd;z-index:8;will-change:transform,opacity');
+  X.title = SL.mk('div', 'big glow', st, 'top:0;font-size:104px;z-index:6;letter-spacing:.02em');
+  X.alt2 = SL.glassPill(st, '<span style="display:inline-block;padding:0 22px;font-size:46px">Alt</span><span style="color:#c4b5fd;font-size:46px">+</span><span style="display:inline-block;padding:0 22px;font-size:46px">S</span>', 'left:0;top:0;width:300px;height:92px;z-index:6;background:linear-gradient(180deg,#ffffff,#ddd6fe);color:#1a1530;border-color:#fff');
+  X.proper = SL.mk('div', 'big glow', st, 'top:0;font-size:96px;z-index:6;letter-spacing:.01em', 'LIKE A <span style="background:linear-gradient(90deg,#c4b5fd,#22d3ee);-webkit-background-clip:text;color:transparent;display:inline-block">PROPER AD</span>');
+
+  // ---- COMPETITORS
+  texts.worry = SL.mk('div', 'big glow', st, 'top:0;font-size:120px;z-index:6;letter-spacing:.01em', 'don\'t worry');
+  [['recordly_icon', 'Recordly'], ['openscreen_icon', 'OpenScreen']].forEach(p => {
+    const e = SL.mk('div', '', st, 'position:absolute;left:-190px;top:-190px;width:380px;height:380px;z-index:6;will-change:transform,opacity,filter');
+    SL.mk('img', '', e, 'position:absolute;left:40px;top:10px;width:300px;height:300px;border-radius:70px;box-shadow:0 0 0 3px rgba(255,255,255,.55),0 30px 70px rgba(0,0,0,.65),0 0 50px rgba(139,92,246,.5)').src = 'assets/' + p[0] + '.png';
+    SL.mk('div', '', e, 'position:absolute;left:0;top:318px;width:380px;text-align:center;font-size:52px;font-weight:700;text-shadow:0 4px 20px rgba(0,0,0,.8)', p[1]);
+    e._tag = SL.glassPill(e, 'FREE', 'left:110px;top:-22px;width:160px;height:56px;font-size:34px;background:linear-gradient(180deg,#22c55e,#15803d);border-color:#bbf7d0');
+    e._x = SL.mk('div', '', e, 'position:absolute;left:30px;top:0;width:320px;height:320px;font-size:340px;line-height:320px;text-align:center;color:#ef4444;font-weight:800;text-shadow:0 0 40px #ef4444;opacity:0', '&times;');
+    plates.push(e);
+  });
+  texts.cap = SL.glassPill(st, 'NOT CAPABLE', 'left:0;top:0;width:640px;height:130px;font-size:72px;z-index:7;background:linear-gradient(180deg,#ef4444,#991b1b);border-color:#fecaca;letter-spacing:.04em');
+  // janky zoom demo card (split beat)
+  X.jank = SL.mk('div', '', st, 'position:absolute;left:40px;top:260px;width:1000px;height:600px;border-radius:36px;overflow:hidden;z-index:5;background:#0b0916;will-change:transform,opacity;box-shadow:0 0 0 2px rgba(239,68,68,.8),0 30px 80px rgba(0,0,0,.7),0 0 60px rgba(239,68,68,.4)');
+  X.jimg = SL.mk('img', '', X.jank, 'position:absolute;left:0;top:0;width:1000px;height:600px;object-fit:cover;transform-origin:0 0'); X.jimg.src = 'assets/app_full.jpg';
+  X.jlab = SL.mk('div', '', X.jank, 'position:absolute;left:0;top:24px;width:100%;text-align:center;font-size:54px;font-weight:800;text-shadow:0 4px 20px #000;letter-spacing:.04em');
+  X.jwd = SL.glassPill(st, 'WEIRD EFFECT', 'left:0;top:0;width:520px;height:100px;font-size:58px;z-index:7;background:linear-gradient(180deg,#ef4444,#991b1b);border-color:#fecaca');
+  // missing list chips (torso zone)
+  ['Proper mic record', 'Shortcut keys', 'Chapters', 'Transcription', '+ and much more'].forEach((n, i) => {
+    const c = SL.glassPill(st, '<span style="color:#ef4444;font-size:58px;margin-right:22px;font-weight:800">&times;</span><span id="chiptxt' + i + '">' + n + '</span>', 'left:0;top:0;width:800px;height:100px;font-size:50px;z-index:6;justify-content:flex-start;padding-left:44px;box-sizing:border-box;background:linear-gradient(180deg,rgba(30,22,60,.9),rgba(12,9,26,.92))');
+    c._i = i; chips.push(c);
+  });
+  X.vig = SL.mk('div', '', st, 'position:absolute;inset:0;pointer-events:none;z-index:40;background:radial-gradient(ellipse at 50% 46%,rgba(0,0,0,0) 45%,rgba(0,0,0,.55) 100%)');
+  X.fade = SL.mk('div', '', st, 'position:absolute;inset:0;pointer-events:none;z-index:41;background:#06050d;opacity:0');
+}
+
+function setLetters(el, t, t0, o) {
+  [...el.children].forEach((s, j) => { const d = OM.letterDrop(t, t0, j, Object.assign({ stagger: 0.04, dist: 80 }, o || {})); s.style.opacity = d.op.toFixed(3); s.style.transform = `translateY(${d.y.toFixed(1)}px) scale(${d.sx.toFixed(3)},${d.sy.toFixed(3)})`; });
+}
+
+function seek(t) {
+  G.at(t, 0);
+  // ---------- face ----------
+  const f = faceLayout(t), fi = clamp(Math.round(t * 24) + 1, 1, NF);
+  FI.src = 'face/f' + String(fi).padStart(4, '0') + '.jpg';
+  FC.style.width = f.w + 'px'; FC.style.height = f.h + 'px'; FC.style.borderRadius = f.r + 'px'; FC.style.transform = `translate3d(${f.x}px,${f.y}px,0)`;
+  const iw = 1080 * f.s, ih = 1920 * f.s; FI.style.width = iw + 'px'; FI.style.height = ih + 'px'; FI.style.left = (f.w / 2 - f.fx * f.s) + 'px'; FI.style.top = (f.h / 2 - f.fy * f.s) + 'px';
+  FC.style.filter = f.br < 0.999 ? `brightness(${f.br.toFixed(3)})` : 'none';
+  const circ = f.r > 100 && f.w < 600;
+  X.faceRim.style.display = circ ? '' : 'none'; X.faceRim.style.left = f.x + 'px'; X.faceRim.style.top = f.y + 'px'; X.faceRim.style.width = f.w + 'px'; X.faceRim.style.height = f.h + 'px'; X.faceRim.style.borderRadius = f.r + 'px';
+  const full = f.w > 1000 && f.h > 1800;
+  X.gtop.style.opacity = full ? 1 : 0; X.gbot.style.opacity = full ? 1 : 0;
+  // ground only matters when face isn't full: fade in under hook
+  G.el.style.opacity = '1';
+
+  // ---------- HOOK 0 - 8.7 ----------
+  // Screen Studio pill (0.05) -> price struck -> 1.3 FREE / 1.5 ALTERNATIVE carry up to header at 1.95
+  let q = OM.popIn(t, 0.05, { rise: 60 });
+  const pOut = sstep(1.25, 1.55, t);
+  SL.tf(X.ssPill, { x: 280, y: 250 + q.dy, s: q.s * (1 - pOut * 0.1), op: q.op * (1 - sstep(1.55, 1.9, t)) });
+  q = OM.popIn(t, 0.55, { rise: 40 }); SL.tf(X.price, { x: 20, y: 460 + q.dy, s: q.s, op: q.op * (1 - sstep(1.2, 1.4, t)), rz: -6 });
+  // FREE / ALTERNATIVE: appear at 1.3 / 1.5 on torso, carry up to y ~ 700 header at 1.95
+  const up = E.expoInOut(seg(t, 1.9, 2.55));
+  T.free.style.top = lerp(930, 640, up) + 'px'; T.alt.style.top = lerp(1130, 850, up) + 'px';
+  const scl = lerp(1, 0.62, up);
+  T.free.style.transform = `scale(${scl})`; T.alt.style.transform = `scale(${lerp(1, 0.78, up)})`;
+  T.free.style.opacity = sstep(1.28, 1.34, t) * (1 - sstep(3.0, 3.3, t)); T.alt.style.opacity = sstep(1.48, 1.54, t) * (1 - sstep(3.0, 3.3, t));
+  setLetters(T.free, t, 1.3, { dist: 140, stagger: 0.05 }); setLetters(T.alt, t, 1.5, { dist: 80, stagger: 0.03 });
+  // wall: rows scan on at 1.95..2.9, "recording" card = centre tile carried forward
+  const wallVis = sstep(1.9, 2.0, t) * (1 - sstep(3.55, 3.85, t));
+  X.wall.style.display = (t > 1.85 && t < 4.1) ? '' : 'none';
+  const wrx = SL.K(t, [[1.9, 56], [2.9, 46, E.sineInOut], [3.15, 0, E.expoInOut]]);       // wall flattens as the centre tile becomes the card
+  const wz = SL.K(t, [[1.9, -300], [2.9, 0, E.expoOut]]);
+  // centre tile (idx 4): becomes the card (rect in screen coords: x 70..1010, y 430..~890)
+  const cardIn = E.expoInOut(seg(t, 3.0, 3.75));
+  const cardS = lerp(1, 3.2, cardIn), cardDy = lerp(0, -420, cardIn);
+  X.wallIn.style.transform = `translate3d(0,${lerp(0, 0, 1)}px,${wz}px) rotateX(${wrx}deg) rotateZ(${lerp(-10, 0, seg(t, 2.8, 3.2))}deg)`;
+  const gx = [-1, 0, 1], gy = [-1, 0, 1];
+  tiles.forEach((e, i) => {
+    const cx = gx[i % 3], cy = gy[Math.floor(i / 3)], isC = i === 4;
+    const t0 = 1.95 + (Math.floor(i / 3) * 0.12 + (i % 3) * 0.07); const k = OM.spring(t - t0, 0.7, 16);
+    const flash = Math.max(0, 1 - Math.abs(seg(t, 2.0, 2.9) * 1.1 - 0.05 - (Math.floor(i / 3) / 3 + 0.1) * 1.0) * 5);
+    const away = cardIn;
+    const sx = 330 * cx, sy = 215 * cy;
+    const s = isC ? lerp(1, cardS, 1) : lerp(1, 1.6, away);
+    SL.tf(e, { x: sx * (isC ? lerp(1, 0, cardIn) : lerp(1, 2.4, away)), y: sy * (isC ? lerp(1, 0, cardIn) : lerp(1, 2.4, away)) + (isC ? cardDy : 0), z: (1 - clamp(k, 0, 1)) * -500, s: s * clamp(k, 0, 1.08), op: clamp(k * 3, 0, 1) * (isC ? 1 : 1 - away), br: 1 + flash * 0.9, blur: (1 - clamp(k, 0, 1)) * 10 + (isC ? 0 : away * 12) });
+  });
+  X.scan.style.top = lerp(-330, 330, seg(t, 2.0, 2.9)) + 'px'; X.scan.style.opacity = seg(t, 2.0, 2.9) > 0 && seg(t, 2.0, 2.9) < 1 ? 1 : 0;
+  // centre tile card keeps living: after 3.75 it persists as a fixed card (re-position outside wall)
+  // smooth demo ---- card stays visible via the tile; inner image auto-zoom follows cursor
+  const IZ = [[3.9, 1, 0.5, 0.5], [4.15, 1, 0.5, 0.5], [4.9, 2.3, 0.22, 0.72], [5.45, 2.3, 0.22, 0.72], [6.2, 2.6, 0.795, 0.47], [6.9, 2.6, 0.795, 0.47], [7.4, 1, 0.5, 0.5]];
+  const zs = SL.K(t, IZ.map((k, i) => [k[0], k[1], i === 0 ? null : E.cubicInOut])), zx = SL.K(t, IZ.map((k, i) => [k[0], k[2], i === 0 ? null : E.cubicInOut])), zy = SL.K(t, IZ.map((k, i) => [k[0], k[3], i === 0 ? null : E.cubicInOut]));
+  // card is 300x190 inside tile; scaling img within: transform-origin 0 0, translate so focus point is centred
+  const im = tiles[4]._im; const tw = 300, th = 190;
+  im.style.transform = `translate(${(tw / 2 - zx * tw * zs).toFixed(2)}px,${(th / 2 - zy * th * zs).toFixed(2)}px) scale(${zs.toFixed(4)})`;
+  // card 3D tilt for 'proper ad' beat (7.4-8.6) and exit
+  const tilt = E.expoInOut(seg(t, 7.35, 8.2)), ex = E.expoIn(seg(t, 8.3, 8.75));
+  if (t > 3.8) { tiles[4].style.transformOrigin = '50% 50%'; }
+  // ---- cursor over card (visible cause) : glides to wheels, clicks, then to pink thumbnail
+  const CUR = [{ t: 3.6, x: 760, y: 1000 }, { t: 4.0, x: 640, y: 760 }, { t: 4.7, x: 300, y: 800 }, { t: 5.0, x: 300, y: 790 }, { t: 5.8, x: 700, y: 720 }, { t: 6.1, x: 780, y: 690 }, { t: 6.9, x: 800, y: 700 }, { t: 7.4, x: 740, y: 800 }];
+  const cp = OM.cursor(t, CUR, [4.85, 6.15]); const cvis = sstep(3.6, 3.75, t) * (1 - sstep(7.3, 7.5, t));
+  X.cur.style.transform = `translate3d(${cp.x.toFixed(1)}px,${cp.y.toFixed(1)}px,0) scale(${(cp.s * 0.85).toFixed(3)})`; X.cur.style.opacity = cvis.toFixed(2);
+  let rk = 0, rcc = false; [4.85, 6.15].forEach(c => { const k = seg(t, c, c + 0.5); if (k > 0 && k < 1) { rk = k; rcc = true; } });
+  X.curRing.style.opacity = rcc ? ((1 - rk) * 0.9).toFixed(2) : 0; X.curRing.style.transform = `translate3d(${cp.x.toFixed(1)}px,${cp.y.toFixed(1)}px,0) scale(${(0.4 + rk * 1.6).toFixed(2)})`;
+  // card position/3D after it has landed: use tile transform (override once landed)
+  if (t >= 3.75) {
+    const cardX = 0, cardY = -420 + lerp(0, 30, tilt) - ex * 700, cs = lerp(3.2, 3.32, tilt) + ex * 2.0;
+    tiles[4].style.transform = `translate3d(${cardX}px,${cardY + 0}px,${lerp(0, 120, tilt)}px) rotateX(${(lerp(0, 14, tilt)).toFixed(2)}deg) rotateY(${(lerp(0, -16, tilt)).toFixed(2)}deg) scale(${cs.toFixed(3)})`;
+    tiles[4].style.opacity = 1 - sstep(8.55, 8.75, t); tiles[4].style.filter = 'none'; tiles[4].style.display = '';
+    X.wallIn.style.transform = `translate3d(0,0,0) rotateX(${lerp(0, 0, 1)}deg)`;
+    X.wall.style.display = t < 8.8 ? '' : 'none'; X.wall.style.perspective = '1300px';
+  }
+  // titles: SMOOTH (5.4) -> ENGAGING (6.2) -> swap in place ; 'alt2' keycap pill at 5.0 ; 'proper ad' 7.4
+  const ttl = t < 6.1 ? 'SMOOTH' : 'ENGAGING';
+  if (X.title._k !== ttl) { X.title._k = ttl; X.title.innerHTML = [...ttl].map(c => `<span>${c}</span>`).join(''); }
+  const t0 = t < 6.1 ? 5.4 : 6.2;
+  X.title.style.top = '262px'; X.title.style.opacity = sstep(5.35, 5.42, t) * (1 - sstep(7.3, 7.5, t)); setLetters(X.title, t, t0, { dist: 90, stagger: 0.04 });
+  q = OM.popIn(t, 4.95, { rise: 30 }); SL.tf(X.alt2, { x: 120, y: 1010 + q.dy, s: q.s, op: q.op * (1 - sstep(5.9, 6.05, t)) });
+  X.proper.style.top = '1190px'; X.proper.style.left = '290px'; X.proper.style.width = '760px'; X.proper.style.fontSize = '78px'; const pr = OM.wordRise(t, 7.45, { dist: 70 }); X.proper.style.opacity = (pr.op * (1 - sstep(8.3, 8.6, t))).toFixed(3); X.proper.style.transform = `translateY(${pr.y.toFixed(1)}px) scale(${pr.s.toFixed(3)})`;
+
+  // ---------- COMPETITORS ----------
+  const wp = OM.wordRise(t, 8.95, { dist: 60 }); texts.worry.style.top = '290px'; texts.worry.style.opacity = (wp.op * (1 - sstep(10.0, 10.3, t))).toFixed(3); texts.worry.style.transform = `translateY(${wp.y.toFixed(1)}px) scale(${wp.s.toFixed(3)})`;
+  plates.forEach((e, i) => {
+    const t0 = i ? 10.7 : 9.6, k = OM.spring(t - t0, 0.62, 15), tag = OM.popIn(t, 13.1 + i * 0.1);
+    const bad = E.expoOut(seg(t, 14.8 + i * 0.12, 15.5 + i * 0.12)), out = sstep(16.2, 16.7, t);
+    SL.tf(e, { x: i ? 780 : 300, y: 1060 + (1 - clamp(k, 0, 1)) * 140 + bad * 26, z: 0, rz: (i ? 1 : -1) * bad * 7, s: 0.78 * clamp(k, 0, 1.08), op: clamp(k * 2, 0, 1) * (1 - out), br: lerp(1, 0.45, bad) });
+    SL.tf(e._tag, { y: tag.dy, s: tag.s, op: tag.op * (1 - bad) }); e._tag.style.left = '110px'; e._tag.style.top = '-22px';
+    e._x.style.opacity = (bad * 0.9).toFixed(2); e._x.style.transform = `scale(${lerp(2, 1, bad)})`;
+  });
+  q = OM.popIn(t, 15.05, { rise: 20, s0: 1.3 }); const shake = OM.shake(t, 15.1, { amp: 12, decay: 8, seed: 3 });
+  SL.tf(texts.cap, { x: 220 + shake.x, y: 1230 + shake.y, rz: -4, s: q.s, op: q.op * (1 - sstep(16.2, 16.6, t)) });
+
+  // split beat 16.8-21 : janky zoom demo (steps at 6 fps = 'weird')
+  const jv = sstep(16.4, 16.9, t) * (1 - sstep(20.7, 21.2, t));
+  X.jank.style.display = jv <= 0.002 ? 'none' : ''; X.jank.style.opacity = jv.toFixed(3); X.jank.style.transform = `translateY(${((1 - sstep(16.4, 16.9, t)) * -80 + (sstep(20.7, 21.2, t)) * -80).toFixed(1)}px)`;
+  const jt = Math.floor(t * 6) / 6;       // stepped time
+  const JZ = [[16.9, 1, 0.5, 0.5], [17.6, 1, 0.5, 0.5], [18.4, 2.6, 0.2, 0.3], [18.6, 1, 0.5, 0.5], [18.8, 2.9, 0.78, 0.7], [19.0, 1, 0.5, 0.5], [19.3, 3.2, 0.4, 0.8], [19.7, 1.4, 0.6, 0.4], [20.1, 2.8, 0.3, 0.6], [20.5, 1, 0.5, 0.5]];
+  const jz = SL.K(jt, JZ.map((k, i) => [k[0], k[1], i === 0 ? null : (x => x)])), jx = SL.K(jt, JZ.map((k, i) => [k[0], k[2], i === 0 ? null : (x => x)])), jy = SL.K(jt, JZ.map((k, i) => [k[0], k[3], i === 0 ? null : (x => x)]));
+  X.jimg.style.transform = `translate(${(500 - jx * 1000 * jz).toFixed(1)}px,${(300 - jy * 600 * jz).toFixed(1)}px) scale(${jz.toFixed(3)})`;
+  X.jlab.textContent = t < 18.5 ? 'ANIMATION?' : (t < 19.2 ? 'ZOOM IN... ZOOM OUT' : 'AJEEB EFFECT'); X.jlab.style.color = '#fecaca';
+  const jw = OM.popIn(t, 19.45, { rise: 20, s0: 1.3 }); const js = OM.shake(t, 19.5, { amp: 14, decay: 7, seed: 5 });
+  SL.tf(X.jwd, { x: 280 + js.x, y: 760 + js.y, rz: 3, s: jw.s, op: jw.op * (1 - sstep(20.6, 20.9, t)) });
+
+  // missing list 21.3 - 30.4 : waterfall chips on torso zone, each crossed as voice says it
+  const CT = [21.5, 23.8, 26.7, 27.8, 29.0];
+  chips.forEach((c, i) => {
+    const t0 = CT[i], k = OM.spring(t - t0, 0.7, 16), bye = E.expoIn(seg(t, 30.3 + i * 0.06, 31.0 + i * 0.06));
+    const y = 840 + i * 118;
+    SL.tf(c, { x: 140 + (i % 2 ? 40 : 0) - bye * 1200 * (i % 2 ? -1 : 1), y: y + (1 - clamp(k, 0, 1)) * 60, s: clamp(k, 0, 1.06), op: clamp(k * 3, 0, 1) * (1 - sstep(31.0, 31.3, t)), blur: (1 - clamp(k, 0, 1)) * 8 });
+  });
+  // end: fade to ground for the B2 handoff
+  X.fade.style.opacity = sstep(32.2, 32.8, t).toFixed(3);
+  return true;
+}
+
+window.__meta = { dur: 32.8, fps: 24 };
+window.__ready = (async () => { build(); await SL.fontReady(); seek(0); return true; })();
+window.__seek = async t => { await window.__ready; seek(t); const im = FI; try { await im.decode(); } catch (e) { } return true; };
+window.__motion = (t0, t1) => { const m = Math.max(t0, t1); const W = [[1.2, 1.9], [1.9, 3.9], [7.3, 9.0], [16.2, 17.1], [20.5, 21.5], [30.2, 32.8]]; return W.some(w => m >= w[0] && m <= w[1]) ? 260 : 36; };
+</script></body></html>

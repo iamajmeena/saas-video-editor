@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Screenlark ad - B2 morph chain (dense)</title>
+<style>
+@font-face{font-family:'Outfit';src:url(assets/Outfit.ttf);font-weight:100 900}
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#06050d}
+body{font-family:'Outfit',system-ui,sans-serif;color:#fff}
+#stage{position:absolute;inset:0;overflow:hidden}
+#scene{position:absolute;inset:0;perspective:1400px;perspective-origin:540px 860px}
+#rig{position:absolute;inset:0;transform-style:preserve-3d}
+.lay{position:absolute;inset:0;opacity:0;will-change:opacity}
+.lab{position:absolute;left:0;width:1080px;text-align:center;font-weight:800;font-size:84px;letter-spacing:.02em;white-space:nowrap;text-shadow:0 0 44px rgba(139,92,246,.95)}
+.lab span{display:inline-block;will-change:transform,opacity}
+.chip{position:absolute;left:-50px;top:-50px;width:100px;height:100px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.08));border:1.6px solid rgba(255,255,255,.55);box-shadow:0 0 50px rgba(139,92,246,.8),inset 0 1px 0 rgba(255,255,255,.6);will-change:transform,opacity}
+.chip svg{width:50px;height:50px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.ghost{position:absolute;left:0;width:1080px;text-align:center;font-weight:800;font-size:330px;letter-spacing:-.02em;white-space:nowrap;color:rgba(167,139,250,.09);mix-blend-mode:screen;will-change:transform,opacity,filter}
+.ghost span{display:inline-block}
+.kw{display:inline-block;margin:0 .22em;transition:none}
+</style></head><body>
+<div id="stage"><div id="scene"><div id="rig"></div></div></div>
+<script src="motion.js"></script><script src="sl.js"></script>
+<script>
+const { OM, SL } = window; const { clamp, lerp, seg, sstep } = OM, E = OM.ease;
+let G, Lamp, Beam, rig, C, L = {}, labs = [], chips = [], words = [], rings = [], wm, dot, X = {}, ghosts = [], sats = [], flares = [], cursor, cursorRing, dl;
+const FEAT = [   // start, end, label, rect, layer, ghost
+  [3.0, 4.2, 'AUTO ZOOM', { cx: 540, cy: 830, w: 960, h: 330 }, 'tl', 'ZOOM'],
+  [4.2, 5.4, 'KEY CAPS', { cx: 540, cy: 880, w: 960, h: 560 }, 'keys', 'KEYS'],
+  [5.4, 6.6, 'CAPTIONS', { cx: 540, cy: 830, w: 960, h: 420 }, 'caps', 'TEXT'],
+  [6.6, 7.8, 'SILENCE REMOVE', { cx: 540, cy: 880, w: 960, h: 560 }, 'sil', 'CUT'],
+  [7.8, 9.0, 'MIC RECORD', { cx: 540, cy: 810, w: 960, h: 330 }, 'mic', 'REC'],
+];
+const FIN = { cx: 540, cy: 940, w: 820, h: 170 };
+const SATIMG = [['preview', 'panel_style'], ['panel_caps', 'hud_full'], ['preview', 'panel_keys'], ['tl_caps', 'panel_audio'], ['record_full', 'panel_silence']];
+const ICON = [
+  ['<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M11 8v6M8 11h6"/>', '<path d="M4 12h16M12 4v16"/>'],
+  ['<rect x="3" y="6" width="18" height="12" rx="3"/><path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8"/>', '<path d="M6 4h12v6H6zM6 14h12v6H6z"/>'],
+  ['<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M9 10.5a2 2 0 100 3M16 10.5a2 2 0 100 3"/>', '<path d="M4 7h16M4 12h10M4 17h13"/>'],
+  ['<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/>', '<path d="M3 12h3l2-6 4 12 3-9 2 3h4"/>'],
+  ['<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v4"/>', '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="#fff"/>'],
+];
+const CAPWORDS = 'Okay, so in this lesson we fix skin tones'.split(' ');
+
+function build() {
+  const st = document.getElementById('stage'); rig = document.getElementById('rig');
+  G = SL.ground(); st.insertBefore(G.el, st.firstChild);
+  // ghost words behind everything (parallax)
+  FEAT.forEach(f => { const g = SL.mk('div', 'ghost', rig, 'top:' + (f[3].cy - 260) + 'px'); g.innerHTML = [...f[5]].map(c => `<span>${c}</span>`).join(''); ghosts.push(g); });
+  // satellites flanking the lamp
+  /* restraint (user): no satellite cards, no chips, no flares - cinematic, not busy */
+  // morphing container C (the carry)
+  C = SL.mk('div', '', rig, 'position:absolute;left:0;top:0;border-radius:40px;overflow:hidden;background:linear-gradient(160deg,rgba(26,20,52,.96),rgba(9,8,20,.98));will-change:transform,width,height;' +
+    'box-shadow:0 0 0 2px rgba(221,214,254,.8),0 30px 90px rgba(0,0,0,.65),0 0 80px rgba(139,92,246,.6),inset 0 1px 0 rgba(255,255,255,.4)');
+  const lay = n => { L[n] = SL.mk('div', 'lay', C); return L[n]; };
+  // tl
+  let l = lay('tl'); X.tlimg = SL.mk('img', '', l, 'position:absolute;left:-100px;top:0;height:100%;width:auto'); X.tlimg.src = 'assets/tl_zoom.jpg';
+  X.ret = SL.mk('div', '', l, 'position:absolute;left:-75px;top:-75px;width:150px;height:150px;border-radius:50%;border:4px solid #22d3ee;box-shadow:0 0 40px #22d3ee,inset 0 0 30px rgba(34,211,238,.5)');
+  X.ret2 = SL.mk('div', '', l, 'position:absolute;left:-75px;top:-75px;width:150px;height:150px;border-radius:50%;border:3px solid rgba(34,211,238,.6)');
+  X.badge = SL.glassPill(l, '<span style="color:#22d3ee;margin-right:12px">&#9906;</span>1.80&times;', 'left:700px;top:18px;width:230px;height:64px;font-size:34px');
+  X.zbar = SL.mk('div', '', l, 'position:absolute;left:0;bottom:0;height:6px;background:linear-gradient(90deg,#8b5cf6,#22d3ee);box-shadow:0 0 20px #22d3ee');
+  // keys
+  l = lay('keys'); X.kp = SL.mk('img', '', l, 'position:absolute;right:20px;top:16px;height:528px;border-radius:20px;box-shadow:0 0 0 1.5px rgba(196,181,253,.6)'); X.kp.src = 'assets/panel_keys.jpg';
+  X.alt = SL.keycap(l, 'Alt', 200); X.s = SL.keycap(l, 'S', 150); X.ctrl = SL.keycap(l, 'Ctrl', 200); X.z = SL.keycap(l, 'Z', 130);
+  X.plus = SL.mk('div', '', l, 'position:absolute;left:0;top:0;width:60px;font-size:80px;font-weight:700;color:#c4b5fd;text-align:center', '+');
+  X.plus2 = SL.mk('div', '', l, 'position:absolute;left:0;top:0;width:60px;font-size:80px;font-weight:700;color:#c4b5fd;text-align:center', '+');
+  X.name = SL.glassPill(l, 'Add Serial Node', 'left:40px;top:450px;width:420px;height:76px;font-size:36px;background:linear-gradient(180deg,#8b5cf6,#6d28d9)');
+  X.name2 = SL.glassPill(l, 'Undo', 'left:40px;top:450px;width:260px;height:76px;font-size:36px;background:linear-gradient(180deg,#22d3ee,#0891b2)');
+  // caps (karaoke)
+  l = lay('caps'); X.ci = SL.mk('img', '', l, 'position:absolute;left:0;top:0;height:300px;width:auto'); X.ci.src = 'assets/tl_caps.jpg';
+  X.ct = SL.glassPill(l, '', 'left:30px;top:310px;width:900px;height:90px;font-size:38px;font-weight:600;justify-content:center;box-sizing:border-box;background:linear-gradient(180deg,rgba(30,22,60,.95),rgba(12,9,26,.95));border-color:rgba(250,204,21,.8)');
+  X.kws = CAPWORDS.map(w => { const s = SL.mk('span', 'kw', X.ct, 'color:rgba(255,255,255,.35)'); s.textContent = w; return s; });
+  X.cedit = SL.glassPill(l, 'edit by text', 'left:700px;top:20px;width:230px;height:60px;font-size:28px;background:linear-gradient(180deg,#facc15,#eab308);color:#1a1530;border-color:#fff');
+  // silence
+  l = lay('sil'); X.sp = SL.mk('img', '', l, 'position:absolute;right:20px;top:16px;height:528px;border-radius:20px;box-shadow:0 0 0 1.5px rgba(196,181,253,.6)'); X.sp.src = 'assets/panel_silence.jpg';
+  X.bars = []; const rr = OM.rng(9);
+  for (let i = 0; i < 24; i++) { const b = SL.mk('div', '', l, 'position:absolute;width:12px;border-radius:6px;background:linear-gradient(#e9d5ff,#8b5cf6)'); b._h = 40 + rr() * 150; b._i = i; X.bars.push(b); }
+  X.cut = SL.mk('div', '', l, 'position:absolute;top:226px;height:56px;padding:0 20px;border-radius:28px;background:#22d3ee;color:#06050d;font-weight:800;font-size:32px;line-height:56px;text-align:center;width:140px');
+  X.cut.textContent = '-2.2s';
+  X.sci = SL.mk('div', '', l, 'position:absolute;left:-40px;top:-40px;width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff;box-shadow:0 0 40px #fff');
+  X.sci.innerHTML = '<svg viewBox="0 0 24 24" width="46" height="46" stroke="#6d28d9" fill="none" stroke-width="2.4" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>';
+  // mic
+  l = lay('mic'); X.hud = SL.mk('img', '', l, 'position:absolute;left:30px;top:24px;width:900px;border-radius:30px'); X.hud.src = 'assets/hud_full.jpg';
+  X.mbars = []; for (let i = 0; i < 40; i++) X.mbars.push(SL.mk('div', '', l, 'position:absolute;width:10px;border-radius:5px;background:linear-gradient(#a5f3fc,#8b5cf6);bottom:36px;left:' + (48 + i * 22) + 'px'));
+  X.mring = SL.mk('div', '', l, 'position:absolute;left:-60px;top:-60px;width:120px;height:120px;border-radius:50%;border:4px solid #ef4444;box-shadow:0 0 40px #ef4444');
+  // finale
+  l = lay('fin'); X.fin = SL.mk('div', '', l, 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:46px;font-weight:700;background:linear-gradient(180deg,#8b5cf6,#6d28d9)', 'Download free &nbsp;&middot;&nbsp; Mac + Windows');
+  // words
+  const mkw = (txt, y, sz) => SL.mk('div', '', rig, `position:absolute;left:0;width:1080px;top:${y}px;text-align:center;font-size:${sz}px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;text-shadow:0 0 60px rgba(139,92,246,.8);will-change:transform,opacity,filter`, txt);
+  words = [mkw('We made', 700, 170), mkw('the <span style="color:#c4b5fd">solution</span>', 880, 150)];
+  dot = SL.mk('div', '', rig, 'position:absolute;left:-30px;top:-30px;width:60px;height:60px;border-radius:50%;background:#ef4444;box-shadow:0 0 60px #ef4444,0 0 0 8px rgba(239,68,68,.3);will-change:transform');
+  Beam = SL.beam(st); Lamp = SL.lamp(st);
+  for (let i = 0; i < 3; i++) rings.push(SL.mk('div', '', st, 'position:absolute;border-radius:50%;border:3px solid rgba(221,214,254,.9);box-shadow:0 0 30px rgba(167,139,250,.9);left:0;top:0;width:100px;height:100px;margin:-50px 0 0 -50px'));
+  wm = SL.mk('img', '', st, 'position:absolute;left:190px;top:1090px;width:700px;will-change:transform,opacity'); wm.src = 'assets/word.png';
+  FEAT.forEach(f => { const d = SL.mk('div', 'lab', st); d.innerHTML = [...f[2]].map(c => `<span>${c === ' ' ? '&nbsp;' : c}</span>`).join(''); labs.push(d); });
+  // chips: 2 per feature
+  SL.mk('div', '', st, 'position:absolute;inset:0;pointer-events:none;z-index:40;background:radial-gradient(ellipse at 50% 46%,rgba(0,0,0,0) 40%,rgba(0,0,0,.62) 100%)');   // cinematic vignette
+  // cursor (oversized macOS-style pointer)
+  cursor = SL.mk('div', '', st, 'position:absolute;left:0;top:0;width:90px;height:120px;will-change:transform;filter:drop-shadow(0 8px 14px rgba(0,0,0,.55));z-index:50');
+  cursor.innerHTML = '<svg viewBox="0 0 24 32" width="90" height="120"><path d="M3 2v22l5.5-5 4 8.5 3.4-1.6-4-8.2H20z" fill="#fff" stroke="#0b0916" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  cursorRing = SL.mk('div', '', st, 'position:absolute;left:0;top:0;width:90px;height:90px;margin:-45px 0 0 -45px;border-radius:50%;border:4px solid #fff;box-shadow:0 0 30px #c4b5fd;will-change:transform,opacity;z-index:49');
+  // download button near the end
+  dl = SL.glassPill(st, '', 'left:0;top:0;width:1px;height:1px');
+}
+
+// container rect over time: lamp -> F1 -> ... -> FIN
+function rectAt(t) {
+  const lamp = { x: 540 - 84, y: 330 - 84, w: 168, h: 168, r: 44 };
+  const conv = f => ({ x: f.cx - f.w / 2, y: f.cy - f.h / 2, w: f.w, h: f.h, r: 40 });
+  const seq = [[2.75, lamp]].concat(FEAT.map(f => [f[0], conv(f[3])])).concat([[9.1, Object.assign(conv(FIN), { r: 85 })]]);
+  let a = seq[0][1];
+  for (let i = 1; i < seq.length; i++) {
+    const A = seq[i - 1][1], B = seq[i][1], t0 = seq[i][0];
+    if (t >= t0) a = OM.morphRect(t, t0, t0 + 0.8, A, B, { spring: { zeta: 0.74, omega: 13 } });
+  }
+  return a;
+}
+
+// cursor path: bottom-right -> container click points (each feature start - .15)
+const CUR = [{ t: 2.5, x: 1000, y: 1500 }, { t: 2.85, x: 560, y: 700 }, { t: 3.15, x: 560, y: 820 }, { t: 4.1, x: 350, y: 760 }, { t: 4.3, x: 300, y: 840 }, { t: 5.3, x: 800, y: 900 }, { t: 5.5, x: 760, y: 830 }, { t: 6.5, x: 480, y: 760 }, { t: 6.7, x: 460, y: 880 }, { t: 7.7, x: 760, y: 820 }, { t: 7.9, x: 720, y: 810 }, { t: 8.9, x: 600, y: 900 }, { t: 9.3, x: 540, y: 940 }, { t: 9.6, x: 580, y: 960 }, { t: 10, x: 620, y: 1000 }];
+const CLICKS = [2.95, 4.15, 5.35, 6.55, 7.75, 9.55];
+
+function seek(t) {
+  G.at(t, sstep(9.2, 10, t));
+  const ry = SL.K(t, [[0, 0], [2.8, 0], [3.4, -9, E.expoInOut], [4.6, 10, E.expoInOut], [5.7, -8, E.expoInOut], [6.9, 9, E.expoInOut], [8.1, -6, E.expoInOut], [9.2, 0, E.expoInOut]]);
+  const rx = SL.K(t, [[0, 0], [2.8, 0], [3.4, 6, E.expoInOut], [5.0, -4, E.sineInOut], [6.6, 5, E.sineInOut], [8.1, -3, E.sineInOut], [9.2, 0, E.expoInOut]]);
+  const zz = SL.K(t, [[0, -160], [1.2, 0, E.expoOut], [2.8, 0], [3.4, 20, E.expoInOut], [4.6, -10, E.sineInOut], [6.6, 30, E.sineInOut], [8.1, 0, E.sineInOut], [9.2, -40, E.expoInOut]]);
+  const sh = [3.0, 4.2, 5.4, 6.6, 7.8, 9.1].reduce((a, th) => { const s = OM.shake(t, th, { amp: 6, decay: 9, seed: Math.round(th * 100) }); return { x: a.x + s.x, y: a.y + s.y, r: a.r + s.rot }; }, { x: 0, y: 0, r: 0 });
+  rig.style.transform = `translate3d(${sh.x.toFixed(2)}px,${sh.y.toFixed(2)}px,${zz.toFixed(2)}px) rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg) rotateZ(${(sh.r * 40).toFixed(3)}deg)`;
+
+  // setup words -> dot
+  words.forEach((w, i) => { const r = OM.wordRise(t, 0.05 + i * 0.5, { dist: 60 }); const g = sstep(0.9, 1.1, t); SL.tf(w, { y: r.y + g * (i ? -90 : 90), s: r.s * (1 - g * 0.9), op: r.op * (1 - sstep(1.0, 1.15, t)), blur: g * 14 }); });
+  const dp = OM.spring(t - 1.0, 0.5, 20);
+  SL.tf(dot, { x: 540, y: 860, s: clamp(dp, 0, 1.3), op: sstep(0.95, 1.0, t) * (1 - sstep(1.12, 1.25, t)) });
+  const bur = OM.spring(t - 1.12, 0.55, 15), fly = E.expoInOut(seg(t, 2.35, 3.15));
+  // the lamp is only the logo REVEAL: burst at centre, then it lifts out of frame and the torch comes from above
+  const ly = lerp(860, -150, fly), ls = lerp(2.4 * clamp(bur, 0, 1.2), 0.9, fly);
+  Lamp.at({ x: 540, y: ly, s: ls, op: (t < 1.12 || t > 3.2) ? 0 : 1, glow: lerp(1, 0.6, fly) + 0.18 * Math.sin(t * 2.5), shine: seg(t, 1.3, 2.0) });
+  rings.forEach((r, i) => { const k = seg(t, 1.12 + i * 0.1, 1.9 + i * 0.1); r.style.display = (k > 0 && k < 1) ? '' : 'none'; r.style.transform = `translate3d(540px,860px,0) scale(${(1 + E.expoOut(k) * 14).toFixed(2)})`; r.style.opacity = (1 - k).toFixed(2); });
+  const wr = OM.wordRise(t, 1.45, { dist: 40 });
+  const wr2 = OM.wordRise(t, 9.55, { dist: 30 });
+  wm.style.opacity = Math.max(wr.op * (1 - sstep(2.35, 2.8, t)), wr2.op).toFixed(3);
+  const inEnd = t > 5; wm.style.top = inEnd ? '1090px' : '1090px'; wm.style.transform = `translate3d(0,${(inEnd ? wr2.y : wr.y).toFixed(1)}px,0) scale(${(inEnd ? wr2.s : wr.s).toFixed(3)})`;
+
+  // container
+  const R = t < 2.75 ? { x: 456, y: 246, w: 168, h: 168, r: 44 } : rectAt(t);
+  const showC = sstep(2.72, 2.8, t);
+  C.style.width = R.w.toFixed(1) + 'px'; C.style.height = R.h.toFixed(1) + 'px'; C.style.borderRadius = (R.r || 40) + 'px';
+  C.style.transform = `translate3d(${R.x.toFixed(2)}px,${R.y.toFixed(2)}px,0)`; C.style.opacity = showC; C.style.display = showC <= 0.002 ? 'none' : '';
+  const fk = {}; FEAT.forEach(f => { fk[f[4]] = sstep(f[0] + 0.25, f[0] + 0.55, t) * (1 - sstep(f[0] + 1.0, f[0] + 1.2, t)); });
+  fk.fin = sstep(9.35, 9.7, t);
+  for (const k in L) L[k].style.opacity = (fk[k] || 0).toFixed(3);
+
+  // ---- tl layer: zoom ring pulses + badge + progress bar
+  const zk = E.expoOut(seg(t, 3.35, 3.95));
+  SL.tf(X.ret, { x: 220, y: 150, s: lerp(0.5, 1.5, zk) * (1 + 0.05 * Math.sin(t * 9)), op: sstep(3.3, 3.45, t) * (1 - sstep(4.0, 4.15, t)) });
+  SL.tf(X.ret2, { x: 220, y: 150, s: lerp(0.8, 2.4, E.expoOut(seg(t, 3.5, 4.1))), op: sstep(3.45, 3.55, t) * (1 - sstep(3.9, 4.1, t)) * 0.7 });
+  const bp = OM.popIn(t, 3.55); SL.tf(X.badge, { y: bp.dy, s: bp.s, op: bp.op });
+  X.zbar.style.width = (960 * E.expoInOut(seg(t, 3.3, 4.0))) + 'px';
+  X.tlimg.style.left = (-100 - 380 * E.sineInOut(seg(t, 3.0, 4.3))) + 'px';       // slow pan of the real timeline = auto zoom follow
+  // ---- keys
+  const pr1 = OM.press(t, 4.85, { depth: 0.2 }), pr2 = OM.press(t, 5.1, { depth: 0.2 }), kp = OM.popIn(t, 4.45), kp2 = OM.popIn(t, 4.95);
+  const swap = sstep(5.05, 5.2, t);      // second combo (Ctrl+Z) replaces Alt+S
+  SL.tf(X.alt, { x: 160, y: 215 + kp.dy, s: kp.s * (1 - pr1.sq * 0.5), op: kp.op * (1 - swap) }); SL.tf(X.plus, { x: 270, y: 150, op: kp.op * (1 - swap), s: kp.s }); SL.tf(X.s, { x: 440, y: 215 + kp.dy, s: kp.s * (1 - pr1.sq * 0.5), op: kp.op * (1 - swap) });
+  SL.tf(X.ctrl, { x: 160, y: 215 + kp2.dy, s: kp2.s * (1 - pr2.sq * 0.5), op: kp2.op * swap }); SL.tf(X.plus2, { x: 270, y: 150, op: kp2.op * swap, s: kp2.s }); SL.tf(X.z, { x: 440, y: 215 + kp2.dy, s: kp2.s * (1 - pr2.sq * 0.5), op: kp2.op * swap });
+  const n1 = OM.popIn(t, 4.95), n2 = OM.popIn(t, 5.2);
+  SL.tf(X.name, { y: n1.dy, s: n1.s, op: n1.op * (1 - swap) }); SL.tf(X.name2, { y: n2.dy, s: n2.s, op: n2.op * swap });
+  // ---- captions (karaoke)
+  const kt = (t - 5.65) * 5.2; X.kws.forEach((s, i) => { const on = clamp(kt - i, 0, 1); s.style.color = `rgba(255,255,255,${(0.35 + 0.65 * on).toFixed(2)})`; s.style.textShadow = on > 0.05 && on < 1 ? '0 0 24px #facc15' : 'none'; s.style.transform = `translateY(${(-6 * Math.sin(on * Math.PI)).toFixed(1)}px)`; });
+  const ce = OM.popIn(t, 6.1); SL.tf(X.cedit, { y: ce.dy, s: ce.s, op: ce.op });
+  // ---- silence
+  const gap = lerp(260, 8, E.expoInOut(seg(t, 7.2, 7.7)));
+  X.bars.forEach(b => { const half = b._i < 12; const x = half ? 250 - gap / 2 - (11 - b._i) * 19 - 12 : 250 + gap / 2 + (b._i - 12) * 19; b.style.left = x + 'px'; const h = b._h * (0.7 + 0.3 * Math.sin(t * 8 + b._i)); b.style.height = h + 'px'; b.style.top = (280 - h / 2) + 'px'; });
+  X.cut.style.left = (250 - 70) + 'px'; X.cut.style.opacity = sstep(7.15, 7.3, t) * (1 - sstep(7.7, 7.85, t));
+  const sk = E.expoInOut(seg(t, 6.9, 7.25)); SL.tf(X.sci, { x: lerp(40, 250, sk), y: lerp(280, 280, sk) + 6 * Math.sin(t * 30), rz: sk * 720, s: 1, op: sstep(6.85, 6.95, t) * (1 - sstep(7.3, 7.45, t)) });
+  // ---- mic
+  X.mbars.forEach((b, i) => { const h = 20 + 120 * Math.abs(Math.sin(t * 5 + i * 0.7) * Math.sin(t * 2.3 + i * 0.3)); b.style.height = h + 'px'; });
+  SL.tf(X.mring, { x: 80, y: 210, s: 1 + 0.25 * Math.abs(Math.sin(t * 6)), op: sstep(8.1, 8.25, t) * (1 - sstep(8.9, 9.0, t)) * 0.8 });
+
+  // ---- ghost words (parallax, letter-wise)
+  ghosts.forEach((g, i) => {
+    const f = FEAT[i], on = sstep(f[0] - 0.05, f[0] + 0.3, t) * (1 - sstep(f[1] - 0.05, f[1] + 0.25, t));
+    const dir = i % 2 ? 1 : -1, drift = (t - f[0]) * 40 * dir;
+    SL.tf(g, { x: drift, z: -200, y: (1 - on) * 60, op: on, blur: 3 + (1 - on) * 12, s: 1 + (1 - on) * 0.1 });
+    [...g.children].forEach((s, j) => { const d = OM.letterDrop(t, f[0] + 0.05, j, { stagger: 0.045, dist: 120 }); s.style.transform = `translateY(${d.y.toFixed(1)}px) scale(${d.sx.toFixed(3)},${d.sy.toFixed(3)})`; });
+  });
+  // ---- satellites flanking the lamp
+  sats.forEach((s, k) => {
+    let idx = -1; FEAT.forEach((f, i) => { if (t >= f[0] - 0.02) idx = i; });
+    s._ims.forEach((im, i) => im.style.opacity = i === idx ? 1 : 0);
+    const f = idx >= 0 ? FEAT[idx] : FEAT[0];
+    const enter = OM.popIn(t, f[0] + 0.1 + k * 0.08, { rise: 60 });
+    const baseX = k ? 930 : 150, baseY = k ? 520 : 470, side = k ? -1 : 1;
+    const drift = (t - f[0]) * 14 * side;
+    const vis = sstep(2.9, 3.3, t) * (1 - sstep(9.1, 9.4, t));
+    SL.tf(s, { x: baseX + drift, y: baseY + enter.dy * 0.7 + 10 * Math.sin(t * 1.3 + k), z: -140 - k * 60, ry: side * 28, rx: -6, rz: side * -3, s: 0.9 * enter.s, op: vis * (idx >= 0 ? 1 : 0), blur: 3.5 });
+  });
+
+  // ---- chips: ingredients fly into container before each morph
+  chips.forEach((c, ci) => {
+    const i = Math.floor(ci / 2), j = ci % 2;
+    const t0 = FEAT[i][0] - 0.6 + j * 0.08, k = E.expoInOut(seg(t, t0, FEAT[i][0] + 0.12 + j * 0.05));
+    const side = (i + j) % 2 ? 1 : -1, sx = 540 + side * 600, sy = 1050 + (i - 2) * 150 + j * 130, tx = R.x + R.w / 2, ty2 = R.y + R.h / 2;
+    const arc = Math.sin(k * Math.PI) * (110 + j * 60);
+    SL.tf(c, { x: lerp(sx, tx, k), y: lerp(sy, ty2, k) - arc, s: lerp(1.0, 0.3, k), op: (t > t0 ? 1 : 0) * (k > 0 ? 1 : 0) * (1 - sstep(0.82, 1, k)), rz: k * 360 * side, blur: j ? 3 : 0 });
+  });
+  // ---- flares at each morph
+  flares.forEach((fl, i) => {
+    const f0 = i < 5 ? FEAT[i][0] : 9.1; const k = seg(t, f0 - 0.05, f0 + 0.55); const yy = i < 5 ? FEAT[i][3].cy : FIN.cy;
+    SL.tf(fl, { x: lerp(-400, 400, E.expoOut(k)), y: yy, op: k > 0 && k < 1 ? Math.sin(k * Math.PI) * 0.9 : 0, sx: 0.5 + 0.8 * k, sy: 1 });
+  });
+  // ---- labels
+  FEAT.forEach((f, i) => {
+    const on = t >= f[0] + 0.1 && t < f[1] + 0.15; const lo = OM.liftOut(t, f[1] - 0.15, { dur: 0.2, dist: 40, blur: 10 });
+    const y = Math.min(1240, f[3].cy + f[3].h / 2 + 40);
+    labs[i].style.top = y + 'px'; labs[i].style.opacity = on ? 1 : 0; labs[i].style.display = on ? '' : 'none';
+    [...labs[i].children].forEach((s, j) => { const d = OM.letterDrop(t, f[0] + 0.15, j, { stagger: 0.035, dist: 70 }); s.style.opacity = (d.op * lo.op).toFixed(3); s.style.transform = `translateY(${(d.y + lo.dy).toFixed(1)}px) scale(${d.sx.toFixed(3)},${d.sy.toFixed(3)})`; s.style.filter = lo.blur > 0.3 ? `blur(${lo.blur.toFixed(1)}px)` : 'none'; });
+  });
+  // ---- beam
+  const bA = sstep(2.95, 3.2, t) * (1 - sstep(9.35, 9.55, t));
+  const box = SL.rectOf(C);
+  Beam.at(bA > 0 ? { sx: 540, sy: -60, box, a: bA * 0.72, pad: 10, endY: box.y - 10 } : null);   // torch enters from above the frame
+  // ---- cursor (the visible cause) : enters, clicks to ignite each morph
+  const cp = OM.cursor(t, CUR, CLICKS);
+  const cvis = sstep(2.5, 2.7, t) * (1 - sstep(9.9, 10, t));
+  cursor.style.transform = `translate3d(${cp.x.toFixed(1)}px,${cp.y.toFixed(1)}px,0) scale(${(cp.s * 0.9).toFixed(3)})`; cursor.style.opacity = cvis.toFixed(2);
+  let rk = 0, rc = null; CLICKS.forEach(c => { const k = seg(t, c, c + 0.45); if (k > 0 && k < 1) { rk = k; rc = c; } });
+  cursorRing.style.opacity = rc ? ((1 - rk) * 0.9).toFixed(2) : 0; cursorRing.style.transform = `translate3d(${cp.x.toFixed(1)}px,${cp.y.toFixed(1)}px,0) scale(${(0.4 + rk * 1.6).toFixed(2)})`;
+  return true;
+}
+
+window.__meta = { dur: 10, fps: 24 };
+window.__ready = (async () => { build(); await SL.fontReady(); seek(0); return true; })();
+window.__seek = async t => { await window.__ready; seek(t); return true; };
+window.__motion = (t0, t1) => { seek(t0); const a = SL.rectOf(C), l1 = SL.rectOf(Lamp.plate), s1 = SL.rectOf(sats[0]); seek(t1); const b = SL.rectOf(C), l2 = SL.rectOf(Lamp.plate), s2 = SL.rectOf(sats[0]); return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(a.w - b.w) / 2, Math.abs(a.h - b.h) / 2, Math.abs(l1.y - l2.y), Math.abs(s1.x - s2.x), 2); };
+</script></body></html>

@@ -1,0 +1,136 @@
+<!doctype html><html><head><meta charset="utf-8"><title>DDR day ident v3</title><style>
+@font-face{font-family:Inter;src:url(assets/Inter.woff2)}@font-face{font-family:Outfit;src:url(assets/Outfit.ttf)}
+*{box-sizing:border-box}html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#101216}
+#st{position:absolute;inset:0;overflow:hidden;background:#101216}
+#bg{position:absolute;inset:-100px}
+.grain{position:absolute;inset:0;opacity:.075;z-index:50;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath filter='url(%23n)' opacity='.6' d='M0 0h180v180H0z'/%3E%3C/svg%3E")}
+#world{position:absolute;inset:0;perspective:1700px;perspective-origin:540px 930px}
+#cam{position:absolute;left:0;top:0;width:0;height:0;transform-style:preserve-3d}
+.slab{position:absolute;left:0;top:0;transform-style:preserve-3d}
+.slab>div{position:absolute;left:0;top:0;width:100%;height:100%;backface-visibility:visible}
+.edge{background:linear-gradient(135deg,#3f8f9e,#7a3a44 55%,#8d7a3e)}
+.face{background:radial-gradient(120% 90% at 30% 0%,#2c3343 0%,#0d1015 55%,#06070a 100%);box-shadow:inset 0 2px 1px #ffffff55,inset 0 -14px 26px #000000a0;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2.5px solid transparent;background-clip:padding-box}
+.ring{background:conic-gradient(from 210deg,#55cde3,#e26067,#eec767,#55cde3)}
+.face svg{width:58%;height:58%;overflow:visible}
+.gloss{position:absolute;inset:0;pointer-events:none}
+#title{position:absolute;left:0;width:1080px;text-align:center;top:300px;z-index:20}
+#t1{font:500 26px Inter;letter-spacing:10px;color:#9fb0c0}
+#t2{font:600 92px Outfit;letter-spacing:-3px;color:#f2f5f8;margin-top:8px;white-space:nowrap}#t2 span{display:inline-block;margin:0 12px}
+#cal{position:absolute;left:0;top:0;width:880px;height:720px;transform-style:preserve-3d}
+#calFace{position:absolute;inset:0;border-radius:40px;background:linear-gradient(180deg,#ffffff16,#ffffff06),#141922e8;border:1.5px solid #8fa3b555;box-shadow:inset 0 2px 1px #ffffff30,0 40px 90px #000a;overflow:hidden}
+#calHead{position:absolute;left:44px;top:40px;right:44px;display:flex;justify-content:space-between;align-items:baseline}
+#calHead b{font:600 44px Outfit;color:#f2f5f8;letter-spacing:-1px}#calHead span{font:500 20px Inter;letter-spacing:5px;color:#8f9cab}
+.bind{position:absolute;top:-22px;width:22px;height:56px;border-radius:11px;background:linear-gradient(180deg,#d9e1e8,#6f7b86);box-shadow:0 6px 12px #0008}
+#grid{position:absolute;left:25px;top:150px;width:830px;height:530px}
+.cell{position:absolute;width:74px;height:78px;border-radius:16px;background:#1e2430;border:1px solid #ffffff14;display:flex;align-items:center;justify-content:center;font:600 28px Outfit;color:#c9d2db}
+.cell.past{color:#62707e;background:#171c25}.cell.past:after{content:'';position:absolute;bottom:9px;width:8px;height:8px;border-radius:50%;background:#55cde3}
+.cell.today{color:#fff;background:#253041}
+#todayRing{position:absolute;border-radius:18px;padding:3px;background:conic-gradient(from 210deg,#55cde3,#e26067,#eec767,#55cde3);pointer-events:none;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;box-shadow:0 0 30px #55cde355}
+#big{position:absolute;left:0;top:0;width:400px;height:400px;border-radius:104px;padding:5px;background:conic-gradient(from 200deg,#55cde3,#e26067,#eec767,#55cde3);z-index:30}
+#big .in{width:100%;height:100%;border-radius:99px;background:radial-gradient(120% 90% at 30% 0%,#2b3242 0%,#0c0e13 55%,#040506 100%);box-shadow:inset 0 3px 2px #ffffff55,inset 0 -30px 50px #000000a0;position:relative;overflow:hidden}
+#big .shine{position:absolute;left:-60%;top:0;width:40%;height:100%;background:linear-gradient(90deg,transparent,#ffffff30,transparent);transform:skewX(-18deg)}
+#dayL{position:absolute;left:0;width:100%;top:56px;text-align:center;font:500 30px Inter;letter-spacing:9px;color:#aeb8c4}
+#num{position:absolute;left:0;width:100%;top:104px;height:210px;display:flex;justify-content:center;gap:6px;overflow:hidden;-webkit-mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent)}
+.col{width:118px;height:210px;position:relative}.strip{position:absolute;left:0;top:0;width:118px;font:600 200px/210px Outfit;color:#f4f7fa;text-align:center;text-shadow:0 0 30px #ffffff30}.strip div{height:210px}
+#of{position:absolute;left:0;width:100%;bottom:52px;text-align:center;font:500 22px Inter;letter-spacing:6px;color:#7f8b98}
+#halo{position:absolute;border-radius:50%;pointer-events:none;z-index:25}
+#tag{position:absolute;left:0;width:1080px;top:1240px;text-align:center;font:400 28px Inter;letter-spacing:3px;color:#a4b0bd;z-index:31}
+</style></head><body><div id="st"><div id="bg"></div>
+<div id="world"><div id="cam"></div></div>
+<div id="title"><div id="t1">DECODING</div><div id="t2"><span>DaVinci</span><span>Resolve</span></div></div>
+<div id="halo"></div><div id="big"><div class="in"><div class="shine"></div><div id="dayL">DAY</div><div id="num"></div><div id="of">OF 60</div></div></div>
+<div id="tag">One thing. Every day.</div><div class="grain"></div></div>
+<script src="lib/motion.js"></script><script>
+const {clamp,lerp,tween,ease}=OM,$=id=>document.getElementById(id),D2R=Math.PI/180;
+const q=new URLSearchParams(location.search),DAY=Math.max(1,Math.min(60,+(q.get('day')||1))),DUR=5.85;
+const T={logo:.05,t1:.50,w1:.76,w2:1.10,gather:1.95,cal:2.30,cells:2.62,today:3.30,lift:3.62,roll:4.02,land:4.55,exit:5.25};
+const G={wheel:'<circle cx="48" cy="48" r="34" fill="none" stroke="url(#g)" stroke-width="7"/><circle cx="48" cy="48" r="7" fill="#fff"/><circle cx="66" cy="34" r="6" fill="#e26067"/>',
+nodes:'<rect x="6" y="20" width="30" height="22" rx="6" fill="none" stroke="url(#g)" stroke-width="6"/><rect x="60" y="54" width="30" height="22" rx="6" fill="none" stroke="url(#g)" stroke-width="6"/><path d="M36 31 C 52 31, 46 65, 60 65" fill="none" stroke="#fff" stroke-width="5"/>',
+timeline:'<rect x="8" y="22" width="52" height="14" rx="5" fill="url(#g)"/><rect x="30" y="44" width="58" height="14" rx="5" fill="#ffffffcc"/><rect x="14" y="66" width="40" height="14" rx="5" fill="url(#g)"/><rect x="66" y="10" width="5" height="78" rx="2" fill="#e26067"/>',
+wave:'<path d="M6 48 L18 48 L24 26 L32 72 L40 18 L48 80 L56 30 L64 64 L72 40 L78 48 L90 48" fill="none" stroke="url(#g)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>',
+curve:'<path d="M10 84 C 40 84, 50 12, 86 12" fill="none" stroke="url(#g)" stroke-width="7" stroke-linecap="round"/><circle cx="10" cy="84" r="7" fill="#fff"/><circle cx="86" cy="12" r="7" fill="#fff"/>',
+play:'<path d="M30 16 L80 48 L30 80 Z" fill="url(#g)" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>',
+cut:'<circle cx="26" cy="72" r="13" fill="none" stroke="url(#g)" stroke-width="6"/><circle cx="70" cy="72" r="13" fill="none" stroke="url(#g)" stroke-width="6"/><path d="M34 62 L74 12 M62 62 L22 12" stroke="#fff" stroke-width="6" stroke-linecap="round"/>',
+mask:'<circle cx="48" cy="48" r="36" fill="none" stroke="url(#g)" stroke-width="6" stroke-dasharray="10 8"/><circle cx="48" cy="48" r="16" fill="#ffffffdd"/>'};
+const DEFS='<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#55cde3"/><stop offset=".55" stop-color="#e26067"/><stop offset="1" stop-color="#eec767"/></linearGradient></defs>';
+// a slab = real thickness: stacked edge layers between a front and a back face
+function slab(w,h,r,depth,n,front,back,edgeCls='edge'){const s=document.createElement('div');s.className='slab';s.style.width=w+'px';s.style.height=h+'px';
+ for(let i=0;i<n;i++){const e=document.createElement('div');e.className=edgeCls;e.style.borderRadius=r+'px';e.style.transform=`translateZ(${-depth/2+depth*i/(n-1)}px)`;e.style.filter=`brightness(${.55+.35*Math.sin(Math.PI*i/(n-1))})`;s.appendChild(e);}
+ const f=document.createElement('div');f.innerHTML=front;f.style.borderRadius=r+'px';f.style.transform=`translateZ(${depth/2+.5}px)`;f.className='fr';s.appendChild(f);
+ const b=document.createElement('div');b.innerHTML=back;b.style.borderRadius=r+'px';b.style.transform=`translateZ(${-depth/2-.5}px) rotateY(180deg)`;s.appendChild(b);
+ s._f=f;s._w=w;s._h=h;$('cam').appendChild(s);return s;}
+function tileFace(k){return `<div class="ring" style="position:absolute;inset:0;border-radius:inherit;padding:3px"><div class="face" style="width:100%;height:100%;border-radius:inherit;position:relative"><svg viewBox="0 0 96 96">${DEFS}${G[k]}</svg><div class="gloss"></div></div></div>`;}
+// DaVinci logo slab (real icon on the front)
+const logo=slab(300,300,68,34,10,`<img src="assets/davinci_logo.png" style="width:100%;height:100%;border-radius:68px;display:block"><div class="gloss" style="border-radius:68px"></div>`,`<div class="face" style="width:100%;height:100%;border-radius:68px"></div>`);
+const KEYS=Object.keys(G);
+const tiles=KEYS.map((k,i)=>{const s=slab(170,170,46,30,9,tileFace(k),tileFace(k));return {s,i,ph:i*Math.PI*2/8};});
+// calendar (60-day series grid)
+const cal=document.createElement('div');cal.id='cal';cal.innerHTML=`<div id="calFace"><div id="calHead"><b>Decoding DaVinci Resolve</b><span>60 DAYS</span></div><div id="grid"></div><div id="todayRing"></div></div>`;
+$('cam').appendChild(cal);[120,250,380,500,630,760].forEach(x=>{const b=document.createElement('div');b.className='bind';b.style.left=x+'px';cal.appendChild(b);});
+const cells=[];for(let d=1;d<=60;d++){const c=document.createElement('div');const col=(d-1)%10,row=Math.floor((d-1)/10);c.className='cell'+(d<DAY?' past':'')+(d===DAY?' today':'');c.textContent=d;c.style.left=col*84+'px';c.style.top=row*88+'px';$('grid').appendChild(c);cells.push({c,col,row,d});}
+const todayCell=cells[DAY-1];
+// odometer
+const digits=String(DAY).padStart(2,'0').split('').map(Number);
+const cols=digits.map((d,i)=>{const c=document.createElement('div');c.className='col';const s=document.createElement('div');s.className='strip';let h='';for(let k=0;k<30;k++)h+=`<div>${k%10}</div>`;s.innerHTML=h;c.appendChild(s);$('num').appendChild(c);return {s,target:20+d,i};});
+function vis(e,o){e.style.opacity=clamp(o);e.style.visibility=o>.002?'visible':'hidden'}
+function gloss(el,ang){el.querySelectorAll('.gloss').forEach(g=>g.style.background=`linear-gradient(${115+ang}deg,transparent 30%,#ffffff2e 45%,transparent 60%)`);}
+function seek(t){
+ const a=t*.4;$('bg').style.background=`radial-gradient(ellipse at ${12+6*Math.sin(a)}% ${25+5*Math.cos(a)}%,#20323b77,transparent 47%),radial-gradient(ellipse at ${92-6*Math.cos(a*.8)}% ${87-5*Math.sin(a*.8)}%,#37302444,transparent 48%),#101216`;
+ // camera: tilted view on the orbit, then squares up to the calendar
+ const sq=tween(t,T.gather,T.cells,ease.quintInOut);
+ const camRX=lerp(0,8,sq)-lerp(0,4,tween(t,T.cells,T.lift,ease.sineInOut)),camRY=lerp(-6,0,tween(t,0,T.gather,ease.sineInOut))+lerp(0,-8,sq)+lerp(0,6,tween(t,T.cells,T.lift,ease.sineInOut));
+ const camZ=lerp(-260,-40,tween(t,0,T.gather,ease.sineOut))+lerp(0,-120,sq);
+ $('cam').style.transform=`translate3d(540px,930px,${camZ}px) rotateX(${camRX}deg) rotateY(${camRY}deg)`;
+ // logo: the sun — rises in, slowly spins, then sinks back as the calendar forms
+ const lp=OM.popIn(t,T.logo,{zeta:.6,omega:11,rise:0,s0:.3,ds:.7,fade:3});const lout=tween(t,T.gather,T.cal+.15,ease.quintIn);
+ const lrot=lerp(-12,12,tween(t,0,T.gather,ease.sineInOut));
+ logo.style.transform=`translate3d(-150px,-150px,${lerp(0,-900,lout)}px) rotateY(${lrot+360*lout}deg) scale(${lp.s*(1-lout*.6)})`;vis(logo,lp.op*(1-tween(t,T.cal-.05,T.cal+.15)));gloss(logo,lrot*2);
+ // planets: revolve around the logo on a tilted orbit and spin on their own axis
+ const inK=clamp(OM.spring(Math.max(0,t-.12),.75,7));
+ const gK=tween(t,T.gather,T.cal+.12,ease.quintIn);
+ tiles.forEach(o=>{const th=o.ph+t*.9+gK*2.4;const R=lerp(1250,400,inK)*(1-gK);
+  const x=R*Math.cos(th),y=R*Math.sin(th),z=lerp(-900,0,inK)*(1-gK);
+  const spin=t*150+o.i*45+gK*300;
+  o.s.style.transform=`translate3d(${x-85}px,${y-85}px,${z}px) rotateY(${spin}deg) rotateX(${12*Math.sin(t*2+o.i)}deg) scale(${lerp(1,.25,gK)})`;
+  vis(o.s,clamp((t-.08-o.i*.03)/.15)*(1-tween(t,T.cal,T.cal+.12)));gloss(o.s,spin%360);});
+ // title written on the spoken words
+ const w0=OM.wordRise(t,T.t1-.1,{dist:40}),w1=OM.wordRise(t,T.w1,{dist:50}),w2=OM.wordRise(t,T.w2,{dist:50});
+ const tOut=tween(t,T.cal,T.cells,ease.quintInOut);$('title').style.transform=`translateY(${-tOut*60}px)`;
+ vis($('t1'),w0.op*(1-tOut));$('t1').style.transform=`translateY(${w0.y}px)`;const sp=$('t2').children;
+ vis(sp[0],w1.op*(1-tOut));sp[0].style.transform=`translateY(${w1.y}px)`;vis(sp[1],w2.op*(1-tOut));sp[1].style.transform=`translateY(${w2.y}px)`;
+ // calendar: glass box forms from the point the planets fell into, then cells build
+ const ck=tween(t,T.cal,T.cal+.42,ease.quintOut);const cw=lerp(140,880,ck),ch=lerp(140,720,ck);
+ const back=tween(t,T.lift,T.lift+.5,ease.quintInOut);
+ cal.style.width=cw+'px';cal.style.height=ch+'px';cal.style.transform=`translate3d(${-cw/2}px,${-ch/2+40}px,${lerp(0,-260,back)}px) rotateX(${lerp(8,0,ck)}deg)`;
+ vis(cal,tween(t,T.cal-.02,T.cal+.12)*(1-back*.55)*(1-tween(t,T.exit-.1,T.exit+.3)));$('calFace').style.filter=`blur(${back*5}px)`;
+ vis($('calHead'),tween(t,T.cal+.3,T.cal+.5));cal.querySelectorAll('.bind').forEach((b,i)=>{const p=OM.popIn(t,T.cal+.32+i*.04,{rise:30});vis(b,p.op);b.style.transform=`translateY(${p.dy}px)`;});
+ $('grid').style.transform=`scale(${cw/880})`;$('grid').style.transformOrigin='0 0';
+ cells.forEach(o=>{const st=T.cells+(o.row+o.col)*.034;const p=OM.popIn(t,st,{rise:22,s0:.6,ds:.4});vis(o.c,p.op);o.c.style.transform=`translateY(${p.dy}px) scale(${p.s})`;});
+ // today: highlighted, then lifts out of the calendar and becomes the counter tile
+ const tr=OM.popIn(t,T.today,{rise:0,s0:1.4,ds:-.4,fade:4});const tc=todayCell.c;
+ Object.assign($('todayRing').style,{left:25+todayCell.col*84-6+'px',top:150+todayCell.row*88-6+'px',width:86+'px',height:90+'px',transform:`scale(${tr.s})`});vis($('todayRing'),tr.op*(1-tween(t,T.lift,T.lift+.1)));
+ vis(tc,t<T.lift?(t<T.cells?0:1):0);
+ // start rect = today cell on screen (measured), end = centre tile
+ let r0={x:540,y:960,w:80,h:84};if(t>=T.lift-.02){const b=tc.getBoundingClientRect();if(b.width>0)r0={x:b.left+b.width/2,y:b.top+b.height/2,w:b.width,h:b.height};else if(window._r0)r0=window._r0;window._r0=r0;}
+ const lk=tween(t,T.lift,T.roll+.15,ease.quintInOut);
+ let bx=lerp(r0.x,540,lk),by=lerp(r0.y,960,lk)-Math.sin(lk*Math.PI)*160,bw=lerp(r0.w,400,lk),bh=lerp(r0.h,400,lk),br=lerp(16,104,lk);
+ const ek=tween(t,T.exit,DUR,ease.quintInOut);bx=lerp(bx,811.5,ek);by=lerp(by,307,ek);bw=lerp(bw,119,ek);bh=lerp(bh,70,ek);br=lerp(br,14,ek);
+ Object.assign($('big').style,{left:bx-bw/2+'px',top:by-bh/2+'px',width:bw+'px',height:bh+'px',borderRadius:br+'px',padding:lerp(2,5,lk)+'px',filter:`blur(${ek*ek*6}px)`,
+  transform:`perspective(1500px) rotateX(${Math.sin(lk*Math.PI)*-35}deg) rotateY(${lerp(180,360,lk)}deg)`});
+ vis($('big'),(t>=T.lift?1:0)*(1-tween(t,DUR-.2,DUR)));
+ const inner=$('big').querySelector('.in');inner.style.borderRadius=lerp(14,99,lk)+'px';
+ const ins=bw/400;['dayL','num','of'].forEach(id=>{$(id).style.transform=`scale(${ins})`;$(id).style.transformOrigin='50% 0';});
+ $('dayL').style.top=56*ins+'px';$('num').style.top=104*ins+'px';$('of').style.bottom=52*ins+'px';
+ vis($('dayL'),tween(t,T.roll-.2,T.roll));vis($('of'),tween(t,T.land,T.land+.2));
+ $('big').querySelector('.shine').style.left=lerp(-60,140,tween(t,T.land-.05,T.land+.45,ease.quintInOut))+'%';
+ cols.forEach(c=>{const k=tween(t,T.roll+c.i*.08,T.land+c.i*.06,ease.expoOut);c.s.style.transform=`translateY(${-lerp(c.target-20,c.target,k)*210}px)`;});
+ // halo on landing (soft light, no rings)
+ const hk=tween(t,T.land-.12,T.land+.12)*(1-tween(t,T.land+.4,T.exit+.2)),hs=760+260*tween(t,T.land,T.land+.6,ease.expoOut);
+ Object.assign($('halo').style,{left:540-hs/2+'px',top:960-hs/2+'px',width:hs+'px',height:hs+'px',background:'radial-gradient(circle,#55cde340 0%,#55cde314 38%,transparent 66%)'});vis($('halo'),hk);
+ vis($('tag'),tween(t,T.land+.05,T.land+.3)*(1-tween(t,T.exit,T.exit+.25)));
+ return true;}
+window.__seek=seek;window.__meta={dur:DUR,fps:30,inFrame:{}};
+window.__motion=(a,b)=>{let m=120;if(a<T.cal+.2)m=320;if(b>T.lift&&a<T.land+.1)m=Math.max(m,420);if(b>T.exit)m=Math.max(m,260);return m*(b-a)*30;};
+window.__ready=Promise.all([document.fonts.load('600 200px Outfit'),document.fonts.load('500 26px Inter'),...Array.from(document.images).map(i=>i.decode())]).then(()=>seek(0));
+window.__ready.then(()=>{if(q.has('play')){let s0=performance.now();(function f(){seek(((performance.now()-s0)/1000)%(DUR+.4));requestAnimationFrame(f)})()}else seek(+(q.get('t')||0));});
+</script></body></html>
