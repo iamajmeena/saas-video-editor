@@ -1,10 +1,10 @@
 ---
-name: glyph-motions
+name: saas-video-editor
 license: PolyForm Noncommercial 1.0.0 (derivative of onetake — see LICENSE / NOTICE)
-description: "Build short vertical (9:16) reels, ads and product motion graphics the glyph-motions way — onetake's deterministic HTML composition + shutter-blur render pipeline, plus a hard-won rule set: camera that travels to every click, 3D perspective that changes per beat, glass panels that FORM, text written word-by-word on the spoken word, a hook that is the densest edit, layout variety, Instagram safe zone, real UIs. Use for any animation / motion graphic / ad / reel for a talking-head or product, Hinglish voice-driven cuts, and when the user says 'one take', 'glyph', 'animation', 'ad', 'reel graphics'."
+description: "SaaS video editor skill: build reels, YouTube videos, ads and product motion graphics (9:16 and 16:9) the glyph-motions way — onetake's deterministic HTML composition + shutter-blur render pipeline, plus a hard-won rule set: camera that travels to every click, 3D perspective that changes per beat, glass panels that FORM, text written word-by-word on the spoken word, a hook that is the densest edit, layout variety, Instagram safe zone, real UIs. Use for any animation / motion graphic / ad / reel for a talking-head or product, Hinglish voice-driven cuts, and when the user says 'one take', 'glyph', 'animation', 'ad', 'reel graphics'."
 ---
 
-# glyph-motions
+# SaaS Video Editor (glyph-motions)
 
 onetake (Patrick, feitangyuan/onetake) is the engine; glyph-motions is the taste. Read `RULES.md` first — it is the
 curated list of rules that came from real corrections. Then `TECHNIQUES.md`, `GOTCHAS.md`. `CORRECTIONS.md` and

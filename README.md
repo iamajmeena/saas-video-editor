@@ -1,4 +1,4 @@
-# Glyph Motions — living knowledge base (future skill)
+# SaaS Video Editor (glyph-motions) — living knowledge base & Claude skill
 
 Goal: grow this folder, reel by reel, until it can be packaged as our own Claude skill
 (final name: **glyph-motions**) — a derivative of the
