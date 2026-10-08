@@ -8,3 +8,5 @@
 - morphRect clamps to source rect before start (item visible early) -> gate on start; maskRise partly visible pre-start -> gate on voice time.
 - Blender: wall plane vs object y; area lights visible in glossy -> visible_glossy False; unlit emission for screens; output path joined to script folder.
 - Never edit another agent's in-progress folder.
+- [2026-10-08 · DDR Day 04] Portrait contact sheets alone missed wrapped-caption extent. Measure actual DOM bounds including all spans; first layout reached y1522, fixed to y1477. Stop only your own render before modifying a composition, then restart. Moving recording windows require per-segment viewer crops and a checked final frame.
+- [2026-10-08 · DDR Day 04] Official render.py stopped with BrokenProcessPool after 230/269 frames. Use its built-in --resume with unchanged comp/settings, 2 workers and --recycle 20 to keep existing shutter-rendered frames. Resume render metadata counters describe only the resumed captures, not the total captures across both runs.

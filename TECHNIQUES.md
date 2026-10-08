@@ -12,3 +12,4 @@
 - Blender -> onetake handoff: bake poses from OM-sampled values; track 3D logo with world_to_camera_view; emission material for screens.
 - Render: `python ~/.claude/skills/onetake/scripts/render.py X.html --out X.mp4 --width 1080 --height 1920 --fps 30 --workers 8 --samples-min 6 --samples-max 40 --gap 1.5 --crf 14`; vertical stills via custom vstills.py (stills.py is 16:9); segment trials via window.__T0 offset.
 - Timings seen: 6.8 s trial 43 s; 70 s full ~30-40 min on 8 workers.
+- [2026-10-08 · DDR Day 04] Shared ResolveUI Color-page extension in ddr_series/lib/resolve-color-ui.js/css: progressive effect search, pointer carries effect onto node, Settings morph, Strength 0.500→1.000. Source refs 144/148/180 s; viewer is cropped original recording. Word captions use 0.30 s quintOut fade-up/blur; maximum wrapped caption bottom measured at y1477.

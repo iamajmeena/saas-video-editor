@@ -16,3 +16,4 @@ Format: date · reel · I did -> user said -> rule (see RULES.md #)
 - 2026-10-08 · Studio Blender · too bright/fake -> low-key, localized lights, real geometry/materials.
 - 2026-10-08 · DDR ident · v1 canvas ring "basic", v2 2D tiles + bg circle -> icons REAL 3D, no bg circle/rings, vertical disc orbit around logo.
 - 2026-10-08 · process · user asked: all animation via onetake + keep learning into a reusable skill -> this folder.
+- [2026-10-08 · DDR Day 04] User switched active scope from Reel 1 to Day 4 test. No added silent ending hold; preserve complete spoken final line. Read project AGENTS.md and Claude learnings first.
