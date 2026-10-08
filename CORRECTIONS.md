@@ -17,3 +17,8 @@ Format: date · reel · I did -> user said -> rule (see RULES.md #)
 - 2026-10-08 · DDR ident · v1 canvas ring "basic", v2 2D tiles + bg circle -> icons REAL 3D, no bg circle/rings, vertical disc orbit around logo.
 - 2026-10-08 · process · user asked: all animation via onetake + keep learning into a reusable skill -> this folder.
 - [2026-10-08 · DDR Day 04] User switched active scope from Reel 1 to Day 4 test. No added silent ending hold; preserve complete spoken final line. Read project AGENTS.md and Claude learnings first.
+
+## 2026-10-08 — DDR Day 5 hook (object removal reveal)
+- REJECTED v1: a full-card left->right wipe revealing "object removed" did not read as removed ("object waisa ka waisa hi hai"): the object was tiny, blurry, at the card edge, the result was held only ~0.3 s and the end fade started before it was seen.
+- FIX (v2, to be judged by the user): zoom the camera onto the object and settle BEFORE the reveal, keep "before" visible ~0.6 s, then a LOCALIZED radial dissolve (clip-path circle at the object + glowing rings) that lands on the spoken word, hold the clean result, start the end fade only after it.
+- User workflow note: for a "just do it all" instruction (no questions), finish the full reel and render 4K directly; still log everything.

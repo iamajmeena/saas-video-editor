@@ -14,3 +14,7 @@
 - [2026-10-08 · DDR Day 04 audio] MOV format/video duration can differ from PCM audio duration: day_04 is 2.333333 s picture but 2.320 s voice. Measure audio samples, not format duration, when concatenating. Full voice is sample-identical to sources at 29.796667 s; 894 video frames run 29.800 s.
 - [2026-10-08 · saas-video-editor test] new_reel.py ran fine from the installed skill (4K 24fps -> 1080x1920 30fps frames 1318 in ~1 min; transcribe on CPU a few minutes). When started with `&` inside a background Bash job, the job reports "completed" immediately — wait on the output files (transcript.txt) with a Monitor instead.
 - [2026-10-08 · DDR Day 2 skill test] Stills caught: two words written side by side overlapped (measure text width; place 2nd word by measureText or far enough), a formBox keeps drawing its final rect after the morph away (stop calling it after the morph start), initial camera zoom 1.2 cropped the headline (keep <=1.1 when text is in the top band).
+
+## 2026-10-08
+- ffmpeg piping the .mov audio straight into numpy returned empty (container has extra data streams); use a pre-extracted wav (-vn -ac 1 -ar 16000) for RMS dip measurements.
+- 4K onetake renders: hook 184 frames ~12 min and body 1027 frames ~31 min with 8 workers; use --workers 5 --recycle 60 when other jobs run, and --resume on crash.
