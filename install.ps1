@@ -1,6 +1,6 @@
 # Install Pro-Motion Editor as a Claude Code skill (Windows PowerShell).
 $ErrorActionPreference = "Stop"
-$dest = Join-Path $env:USERPROFILE ".claude\skills\saas-video-editor"
+$dest = Join-Path $env:USERPROFILE ".claude\skills\pro-motion-editor"
 New-Item -ItemType Directory -Force $dest | Out-Null
 Copy-Item -Recurse -Force "$PSScriptRoot\*" $dest
 Remove-Item -Recurse -Force "$dest\.git" -ErrorAction SilentlyContinue
