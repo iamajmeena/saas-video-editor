@@ -1,4 +1,4 @@
-# SaaS Video Editor (glyph-motions) — living knowledge base & Claude skill
+# Pro-Motion Editor (glyph-motions) — Claude Code skill + living knowledge base
 
 ## Preview — one skill, many kinds of videos
 Silent GIF cuts (3-4 s each) from real builds. Same engine, very different looks.
@@ -54,7 +54,7 @@ While doing so, every new learning is written HERE immediately (not just in `../
 Derivative workflow of the `onetake` skill by Patrick (github.com/feitangyuan/onetake), PolyForm Noncommercial 1.0.0. onetake's own files (lib/motion.js, ui_kit.js, scripts, templates, references) are included unchanged with its LICENSE; everything else is ours (see NOTICE).
 
 ## Use it for your next video
-`sh install.sh` (or `.\install.ps1`), then tell Claude Code: "edit this video with saas-video-editor: <file>". See `INSTALL.md` and `WORKFLOW.md`.
+`sh install.sh` (or `.\install.ps1`), then tell Claude Code: "edit this video with pro-motion-editor: <file>". See `INSTALL.md` and `WORKFLOW.md`.
 Tools: `scripts/new_reel.py` (project + face frames + transcript), `scripts/transcribe.py` (Hinglish-safe), `scripts/render.py` (shutter-blur render),
 `scripts/make_preview.py` (playable copy / GIF), `templates/reel9x16/comp.html` (vertical starter, test render passed: 270 frames, no page errors).
 

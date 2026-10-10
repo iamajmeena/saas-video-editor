@@ -1,15 +1,15 @@
 # Install
 
 ```bash
-git clone https://github.com/iamajmeena/saas-video-editor.git
-cd saas-video-editor
+git clone https://github.com/iamajmeena/pro-motion-editor-skill.git
+cd pro-motion-editor-skill
 sh install.sh            # Git Bash / macOS / Linux      (Windows PowerShell: .\install.ps1)
 ```
 Needs: Python 3.10+, ffmpeg on PATH, Chrome/Chromium (installed by Playwright), ~2 GB for the Whisper large-v3-turbo model on first transcription.
-The installer copies this repo to `~/.claude/skills/saas-video-editor`, installs `requirements.txt` and Playwright Chromium.
+The installer copies this repo to `~/.claude/skills/pro-motion-editor`, installs `requirements.txt` and Playwright Chromium.
 
 ## First video (say this to Claude Code)
-> "Edit this video with saas-video-editor: C:/path/to/source.mov"
+> "Edit this video with pro-motion-editor: C:/path/to/source.mov"
 
 Claude then follows `WORKFLOW.md`: scaffolds the project (`scripts/new_reel.py`), transcribes (Hinglish-safe), shows the transcript
 and a beat plan, asks everything unclear in one message, builds beat 1 as a trial, then continues beat by beat.

@@ -22,3 +22,4 @@ Format: date · reel · I did -> user said -> rule (see RULES.md #)
 - REJECTED v1: a full-card left->right wipe revealing "object removed" did not read as removed ("object waisa ka waisa hi hai"): the object was tiny, blurry, at the card edge, the result was held only ~0.3 s and the end fade started before it was seen.
 - FIX (v2, to be judged by the user): zoom the camera onto the object and settle BEFORE the reveal, keep "before" visible ~0.6 s, then a LOCALIZED radial dissolve (clip-path circle at the object + glowing rings) that lands on the spoken word, hold the clean result, start the end fade only after it.
 - User workflow note: for a "just do it all" instruction (no questions), finish the full reel and render 4K directly; still log everything.
+- [2026-10-10] Renamed: skill is now Pro-Motion Editor (skill name pro-motion-editor, repo iamajmeena/pro-motion-editor-skill; old name saas-video-editor in history).
